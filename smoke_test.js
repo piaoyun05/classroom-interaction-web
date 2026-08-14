@@ -214,5 +214,9 @@ renderRoute('#/student?d=' + studentData)
 renderRoute('#/')
 contentCheck(appEl._innerHTML, '核心板块', '学生视角首页')
 
+// 底部 Tab 包含留言区
+renderRoute('#/message')
+contentCheck(appEl._innerHTML, '留言区', '底部Tab包含留言区')
+
 console.log(`\n=== 结果: ${pass} 通过 / ${fail} 失败 ===`)
 process.exit(fail > 0 ? 1 : 0)

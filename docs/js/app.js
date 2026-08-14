@@ -151,12 +151,14 @@
   var TAB_ITEMS = [
     { key: 'home', label: '首页', icon: '🏠', hash: '#/' },
     { key: 'discussion', label: '讨论区', icon: '💬', hash: '#/discussion' },
+    { key: 'message', label: '留言区', icon: '💌', hash: '#/message' },
     { key: 'ai', label: 'AI问答', icon: '🤖', hash: '#/ai' },
     { key: 'profile', label: '我的', icon: '👤', hash: '#/profile' }
   ]
 
   function activeTabKey(route) {
-    if (route.page === 'home' || route.page.indexOf('publish') === 0 || route.page.indexOf('message') === 0 || route.page === 'createCourse' || route.page === 'courseCreated' || route.page === 'teacherConfig' || route.page === 'aiSummary' || route.page === 'personalStudy') return 'home'
+    if (route.page === 'home' || route.page.indexOf('publish') === 0 || route.page === 'createCourse' || route.page === 'courseCreated' || route.page === 'teacherConfig' || route.page === 'aiSummary' || route.page === 'personalStudy') return 'home'
+    if (route.page === 'message' || route.page.indexOf('message') === 0) return 'message'
     if (route.page === 'discussion' || route.page.indexOf('discussion') === 0 || route.page === 'review') return 'discussion'
     if (route.page === 'ai') return 'ai'
     if (route.page === 'profile') return 'profile'

@@ -6,10 +6,16 @@
   var Util = global.Util
 
   // ---------- 真实大模型（DeepSeek，兼容 OpenAI 接口） ----------
+  // key 优先级：浏览器 localStorage（web_ai_key，设置页填写）> APP_CONFIG.DEEPSEEK_API_KEY
   // 未配置 key 或调用失败返回 null，由调用方降级为本地模板
   async function realAiCall(system, user) {
     var c = (typeof global.APP_CONFIG === 'object' && global.APP_CONFIG) ? global.APP_CONFIG : null
-    if (!c || !c.DEEPSEEK_API_KEY) return null
+    var key = ''
+    try {
+      key = (typeof Util !== 'undefined' && Util.storage) ? (Util.storage.get('web_ai_key', '') || '') : ''
+    } catch (e) { key = '' }
+    if (!key && c && c.DEEPSEEK_API_KEY) key = c.DEEPSEEK_API_KEY
+    if (!key) return null
     try {
       var controller = (typeof AbortController !== 'undefined') ? new AbortController() : null
       var timer = null
@@ -18,7 +24,7 @@
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'Bearer ' + c.DEEPSEEK_API_KEY
+          'Authorization': 'Bearer ' + key
         },
         body: JSON.stringify({
           model: 'deepseek-chat',

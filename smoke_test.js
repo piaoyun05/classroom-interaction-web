@@ -192,6 +192,11 @@ contentCheck(appEl._innerHTML, 'AI 内容智能总结', 'AI总结中心')
 renderRoute('#/profile')
 contentCheck(appEl._innerHTML, 'AI 答疑复核', '个人中心教师菜单')
 
+// 教师配置页：AI 大模型配置（DeepSeek key 本地存储）
+renderRoute('#/teacherConfig')
+contentCheck(appEl._innerHTML, 'AI 大模型配置', '配置页AI模型配置区块')
+contentCheck(appEl._innerHTML, 'ai-key-input', '配置页AI key输入框')
+
 // 教师姓名字段
 renderRoute('#/createCourse')
 contentCheck(appEl._innerHTML, '教师姓名', '创建课程教师姓名字段')

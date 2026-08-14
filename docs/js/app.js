@@ -361,6 +361,10 @@
 
   function renderTeacherConfig() {
     var cfg = state.config
+    var aiKey = Util.storage.get('web_ai_key', '') || ''
+    var aiStatus = aiKey
+      ? '<div class="config-desc">✅ AI key 已配置（本浏览器生效）</div>'
+      : '<div class="config-desc">⚠️ 未配置，AI 使用内置模板回复</div>'
     return '<div class="page">' +
       '<div class="form-card card">' +
       '<div class="config-title">⚙️ 课程基础配置</div>' +
@@ -388,6 +392,13 @@
       '<div><div class="config-label">AI 答疑开关</div><div class="config-desc">控制讨论区「AI一键解答」按钮是否可用</div></div>' +
       '<div class="switch ' + (cfg.aiAnswerEnabled ? 'on' : '') + '" data-action="toggle-config" data-key="aiAnswerEnabled"><div class="switch-knob"></div></div>' +
       '</div>' +
+      '<div class="form-label">AI 大模型配置（DeepSeek）</div>' +
+      '<div class="config-desc">用于「AI一键解答」「AI全局问答」。key 仅保存在本浏览器本地，不会上传。</div>' +
+      '<div class="config-row">' +
+      '<input id="ai-key-input" class="form-input" type="password" placeholder="sk-..." value="' + Util.escapeHtml(aiKey) + '" style="flex:1;min-width:0"/>' +
+      '<button class="config-btn active" data-action="save-ai-key" style="flex:0 0 auto">保存</button>' +
+      '</div>' +
+      aiStatus +
       '</div></div>'
   }
 
@@ -1572,6 +1583,16 @@
     renderApp()
   }
 
+  function saveAiKey() {
+    var input = document.getElementById('ai-key-input')
+    if (!input) return
+    var key = input.value.trim()
+    if (!key) { Util.showToast('请输入 DeepSeek API key'); return }
+    Util.storage.set('web_ai_key', key)
+    Util.showToast('AI key 已保存到本浏览器', 'success')
+    renderApp()
+  }
+
   function setStyle(val) {
     state.config.pageStyle = val
     saveState()
@@ -1673,6 +1694,7 @@
       case 'reject-message': rejectMessage(id); break
       case 'set-style': setStyle(el.getAttribute('data-val')); break
       case 'toggle-config': toggleConfig(key); break
+      case 'save-ai-key': saveAiKey(); break
       case 'create-course': createCourse(); break
       case 'use-sample-course': useSampleCourse(); break
       case 'enter-course': navigate('#/'); break

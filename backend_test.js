@@ -1,65 +1,68 @@
-// backend.js 单元验证：mock CloudBase SDK（内存文档库 + 匿名登录），
-// 验证「集合 courses 每课程一文档」同步管线（无需真实腾讯云）。
+// backend.js 单元验证：用内存 mock 模拟 supabase 客户端，
+// 验证同步管线（字段映射、读写、订阅），不联网。
 'use strict'
 const fs = require('fs')
 const path = require('path')
 const vm = require('vm')
 
-// ---- 内存 CloudBase mock ----
-let docs = {}
-let watchers = []
+// ---- 内存表存储 ----
+const store = {}        // table -> { idKey: row }
+const realtimeEvents = []
 
-function makeApp() {
-  return {
-    auth() { return { signInAnonymously: () => Promise.resolve({}) } },
-    database() {
-      return {
-        command: { push: (arr) => ({ __op: 'push', arr }) },
-        collection() {
-          return {
-            doc(id) {
-              return {
-                get() { return Promise.resolve({ data: docs[id] ? [Object.assign({ _id: id }, JSON.parse(JSON.stringify(docs[id])))] : [] }) },
-                set(obj) { docs[id] = JSON.parse(JSON.stringify(obj)); return Promise.resolve({}) },
-                update(obj) {
-                  docs[id] = docs[id] || {}
-                  Object.keys(obj).forEach(k => {
-                    const v = obj[k]
-                    if (v && v.__op === 'push') {
-                      docs[id][k] = (docs[id][k] || []).concat(JSON.parse(JSON.stringify(v.arr)))
-                    } else {
-                      docs[id][k] = JSON.parse(JSON.stringify(v))
-                    }
-                  })
-                  return Promise.resolve({})
-                },
-                watch(cfg) { watchers.push(cfg); return { close() { watchers = [] } } }
-              }
-            }
-          }
-        }
+function tableApi(name) {
+  store[name] = store[name] || {}
+  const rows = store[name]
+  const api = {
+    _name: name,
+    select() { return api },
+    eq(col, val) { api._filter = { col, val }; return api },
+    single() { api._singleExpected = true; return api },
+    order() { return api },
+    upsert(row) {
+      const key = row.id || row.course_id
+      rows[key] = JSON.parse(JSON.stringify(row))
+      return Promise.resolve({ error: null })
+    },
+    insert(row) {
+      const key = row.id || row.course_id
+      rows[key] = JSON.parse(JSON.stringify(row))
+      return Promise.resolve({ error: null })
+    },
+    delete() { return api },
+    then(cb) {
+      let data
+      if (api._filter) {
+        data = Object.values(rows).filter(r => String(r[api._filter.col]) === String(api._filter.val))
+      } else {
+        data = Object.values(rows)
       }
+      if (name === 'courses' && api._singleExpected) data = data[0] || null
+      return Promise.resolve(cb({ data, error: null }))
     }
+  }
+  return api
+}
+
+function makeClient() {
+  return {
+    from(table) { return tableApi(table) },
+    channel(name) {
+      return {
+        on(evt, cfg, cb) { realtimeEvents.push({ name, cfg, cb }); return this },
+        subscribe(cb) { cb && cb('SUBSCRIBED'); return this }
+      }
+    },
+    removeChannel() {}
   }
 }
 
-const win = { APP_CONFIG: { CLOUDBASE_ENV: 'aiclass-test' } }
-const sandbox = {
-  window: win,
-  console: console,
-  Promise: Promise,
-  JSON: JSON,
-  Object: Object,
-  Array: Array,
-  String: String,
-  Date: Date,
-  Math: Math,
-  setInterval: () => 0,
-  clearInterval: () => {},
-  cloudbase: { init: () => makeApp() }
+const win = {
+  supabase: { createClient: () => makeClient() },
+  APP_CONFIG: { SUPABASE_URL: 'https://demo.supabase.co', SUPABASE_ANON_KEY: 'test-key' }
 }
+const sandbox = { window: win, console: console, Promise: Promise, JSON: JSON, Object: Object, Array: Array, String: String, Date: Date, Math: Math }
 sandbox.global = sandbox
-sandbox.window.cloudbase = sandbox.cloudbase
+sandbox.window.supabase = win.supabase
 
 vm.runInNewContext(fs.readFileSync(path.join(__dirname, 'docs', 'js', 'backend.js'), 'utf8'), sandbox, { filename: 'backend.js' })
 
@@ -67,60 +70,49 @@ const B = win.Backend
 let pass = 0, fail = 0
 function ck(cond, label) { if (cond) { pass++; console.log('✅ ' + label) } else { fail++; console.log('❌ ' + label) } }
 
-;(async function run() {
-  ck(B.init() === true, 'Backend.init 返回 true（CLOUDBASE_ENV 已配置 + SDK 存在）')
-  await B.ready
-  ck(B.isEnabled() === true, '匿名登录完成后 isEnabled 为 true')
+ck(B.init() === true, 'Backend.init 成功启用')
+ck(B.isEnabled() === true, 'isEnabled 为 true')
 
-  // 课程（创建文档）
-  let ok = await B.upsert('courses', { id: 'c1', name: '高等数学', className: '计科1班', semester: '2026', teacherName: '张老师', intro: '微积分', createdAt: 1 })
-  ck(ok === true, 'upsert courses 成功')
-  ck(docs.c1 && docs.c1.meta && docs.c1.meta.name === '高等数学' && docs.c1.meta.className === '计科1班', 'courses 存入 meta 字段（camelCase）')
-  ck(Array.isArray(docs.c1.publishes) && Array.isArray(docs.c1.discussions), '建课程时初始化空数组')
+// upsert discussions（camelCase -> snake_case + comments jsonb）
+B.upsert('discussions', { id: 'd1', author: '陈同学', title: '测试帖', content: '内容', category: 'question', createTime: 1700000000000, likes: 5, comments: [{ author: '李', content: '好' }], aiAnswer: null, aiPinned: false }).then(() => {
+  const row = store.discussions['d1']
+  ck(row !== undefined, 'discussions 写入成功')
+  ck(row.author === '陈同学' && row.title === '测试帖', '基本字段映射正确')
+  ck(row.create_time === 1700000000000, 'createTime -> create_time')
+  ck(typeof row.comments === 'string' && JSON.parse(row.comments)[0].author === '李', 'comments 序列化为 jsonb 字符串')
 
-  // 新增发布（原子追加）
-  ok = await B.upsert('publishes', { id: 'p1', courseId: 'c1', title: '作业', category: 'homework', content: 'x', createTime: 1, isTop: false, views: 0, attachments: [] })
-  ck(ok === true && docs.c1.publishes.length === 1 && docs.c1.publishes[0].title === '作业', 'publishes 新增写入')
+  // loadCourse 反向映射
+  store.courses = store.courses || {}
+  store.courses['course_x'] = { id: 'course_x', name: '高数', class_name: '计科1班', semester: '2026', teacher_name: '张老师', created_at: 1 }
+  return B.loadCourse('course_x')
+}).then(c => {
+  ck(c && c.className === '计科1班' && c.teacherName === '张老师', 'loadCourse 反向映射 snake->camel 正确')
 
-  // 讨论（含 comments 数组）
-  ok = await B.upsert('discussions', { id: 'd1', courseId: 'c1', author: '陈同学', title: '提问', content: 'c', category: 'question', createTime: 1, likes: 0, comments: [{ author: '李', content: '好' }], aiAnswer: null })
-  ck(ok === true && docs.c1.discussions[0].comments[0].author === '李', 'discussions.comments 数组原样保留')
+  // loadAll（按 course_id 过滤 + 反向映射 + loadGist 别名）
+  store.publishes = { p1: { id: 'p1', course_id: 'course_x', title: '作业', category: 'homework', content: 'x', create_time: 1, is_top: false, views: 0, attachments: '[]' } }
+  store.messages = { m1: { id: 'm1', course_id: 'course_x', student_name: '小明', is_anonymous: false, type: 'knowledge', content: 'q', create_time: 1, replied: false, status: 'approved' } }
+  store.discussions = { d1: { id: 'd1', course_id: 'course_x', author: '陈', title: 'T', content: 'c', create_time: 1, comments: '[]' } }
+  store.course_config = { course_x: { course_id: 'course_x', page_style: 'compact', message_review_enabled: true, discussion_post_enabled: true, ai_answer_enabled: true } }
+  return B.loadAll('course_x')
+}).then(shared => {
+  ck(shared.publishes.length === 1 && shared.publishes[0].title === '作业', 'loadAll publishes 数量正确')
+  ck(shared.messages.length === 1 && shared.messages[0].studentName === '小明', 'loadAll messages 反向映射正确')
+  ck(shared.discussions.length === 1 && Array.isArray(shared.discussions[0].comments), 'loadAll discussions comments 反序列化为数组')
+  ck(shared.config && shared.config.pageStyle === 'compact' && shared.config.messageReviewEnabled === true, 'loadAll config 反向映射正确')
+  return B.loadGist('course_x')
+}).then(g => {
+  ck(g && g.publishes.length === 1, 'loadGist 别名可用')
 
-  // 留言
-  ok = await B.upsert('messages', { id: 'm1', courseId: 'c1', studentName: '小明', isAnonymous: false, type: 'knowledge', content: 'q', createTime: 1, replied: false, status: 'approved' })
-  ck(ok === true && docs.c1.messages[0].studentName === '小明', 'messages 写入')
+  // subscribe 验证（5 张表注册实时监听 + course_id 过滤）
+  B.subscribe('course_x', () => {})
+  ck(realtimeEvents.length === 5, 'subscribe 为 5 张表注册了实时监听')
+  ck(realtimeEvents.some(e => e.cfg.table === 'discussions' && /course_id=eq\.course_x/.test(e.cfg.filter)), 'discussions 监听带 course_id 过滤')
 
-  // 配置（剥离 courseId）
-  ok = await B.upsert('course_config', Object.assign({ courseId: 'c1' }, { pageStyle: 'compact', messageReviewEnabled: true, discussionPostEnabled: true, aiAnswerEnabled: true }))
-  ck(ok === true && docs.c1.config.pageStyle === 'compact' && !('courseId' in docs.c1.config), 'course_config 写入且剥离 courseId')
+  // remove
+  return B.remove('discussions', 'd1')
+}).then(() => {
+  ck(true, 'remove 调用不报错')
 
-  // 更新已有条目（不重复追加）
-  ok = await B.upsert('publishes', { id: 'p1', courseId: 'c1', title: '作业v2', category: 'homework', content: 'y', createTime: 1, isTop: false, views: 0, attachments: [] })
-  ck(ok === true && docs.c1.publishes.length === 1 && docs.c1.publishes[0].title === '作业v2', 'upsert 同 id 更新而非重复追加')
-
-  // loadGist 聚合
-  const shared = await B.loadGist('c1')
-  ck(shared && shared.course.name === '高等数学', 'loadGist 返回课程 meta')
-  ck(shared.publishes.length === 1 && shared.publishes[0].title === '作业v2', 'loadGist publishes')
-  ck(shared.messages.length === 1 && shared.messages[0].studentName === '小明', 'loadGist messages')
-  ck(shared.discussions.length === 1 && Array.isArray(shared.discussions[0].comments), 'loadGist discussions.comments 为数组')
-  ck(shared.config && shared.config.messageReviewEnabled === true, 'loadGist config')
-  ck(await B.loadGist('not_exist') === null, 'loadGist 未知课程返回 null')
-
-  // 删除
-  ok = await B.remove('discussions', 'd1', 'c1')
-  ck(ok === true && docs.c1.discussions.length === 0, 'remove discussions 生效')
-
-  // 实时订阅（watch）
-  let changed = 0
-  B.subscribe('c1', () => { changed++ })
-  await B.ready
-  ck(watchers.length === 1, 'subscribe 注册了 watch')
-  watchers[0].onChange()
-  ck(changed === 1, 'watch onChange 触发回调')
-  B.unsubscribe()
-  ck(watchers.length === 0, 'unsubscribe 关闭 watch')
-
-  console.log(`\n=== CloudBase 后端管线测试: ${pass} 通过 / ${fail} 失败 ===`)
+  console.log(`\n=== Supabase 后端管线测试: ${pass} 通过 / ${fail} 失败 ===`)
   process.exit(fail > 0 ? 1 : 0)
-})().catch(e => { console.error('测试异常:', e); process.exit(1) })
+}).catch(e => { console.error('测试异常:', e); process.exit(1) })

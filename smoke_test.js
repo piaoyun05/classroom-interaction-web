@@ -93,7 +93,7 @@ loadScript('js/data.js')
 loadScript('js/aiEngine.js')
 loadScript('js/config.js')
 // 冒烟测试强制走本地模式：清空配置，避免发起真实网络请求
-win.APP_CONFIG = { CLOUDBASE_ENV: '' }
+win.APP_CONFIG = { SUPABASE_URL: '', SUPABASE_ANON_KEY: '' }
 loadScript('js/backend.js')
 
 // 先设置课程，让首页可完整渲染

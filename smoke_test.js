@@ -75,7 +75,10 @@ const sandbox = {
   clearTimeout: () => {},
   Promise: Promise,
   btoa: (s) => Buffer.from(s, 'binary').toString('base64'),
-  atob: (s) => Buffer.from(s, 'base64').toString('binary')
+  atob: (s) => Buffer.from(s, 'base64').toString('binary'),
+  fetch: () => Promise.resolve({ ok: true, json: () => Promise.resolve({ files: {} }) }),
+  setInterval: () => 0,
+  clearInterval: () => {}
 }
 sandbox.global = sandbox
 

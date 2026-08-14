@@ -77,7 +77,7 @@
     renderApp()
   }
 
-  // ========== 云端同步（Supabase） ==========
+  // ========== 云端同步（GitHub Gist） ==========
   // 后端未配置时 backendOn() 为 false，以下方法全部静默降级为本地存储。
   function backendOn() {
     return (typeof Backend !== 'undefined') && Backend && Backend.isEnabled()
@@ -89,8 +89,8 @@
     Backend.upsert(table, r)
   }
   function syncDelete(table, id) {
-    if (!backendOn()) return
-    Backend.remove(table, id)
+    if (!backendOn() || !state.course) return
+    Backend.remove(table, id, state.course.id)
   }
   // 从云端拉取当前课程的共享数据并覆盖本地
   function syncFromBackend() {
@@ -1090,12 +1090,10 @@
     }
     // 尝试从云端拉取真实课程与共享数据（按课程 id 同步）
     if (backendOn()) {
-      Backend.loadCourse(course.id).then(function (real) {
-        if (real) course = real
-        Backend.loadAll(course.id).then(function (shared) {
-          applyStudentData(course, shared)
-          startRealtime()
-        }).catch(function () { applyStudentData(course, null) })
+      Backend.loadGist(course.id).then(function (shared) {
+        var real = (shared && shared.course) ? shared.course : course
+        applyStudentData(real, shared)
+        startRealtime()
       }).catch(function () { applyStudentData(course, null) })
     } else {
       applyStudentData(course, null)

@@ -155,6 +155,11 @@ function contentCheck(html, keyword, label) {
   console.log(`${ok ? '✅' : '❌'} ${label}: ${ok ? '找到「' + keyword + '」' : '未找到「' + keyword + '」'}`)
   return ok
 }
+function contentNotCheck(html, keyword, label) {
+  const ok = !(html && html.indexOf(keyword) !== -1)
+  console.log(`${ok ? '✅' : '❌'} ${label}: ${ok ? '未出现「' + keyword + '」' : '不应出现「' + keyword + '」'}`)
+  return ok
+}
 
 console.log('\n=== 关键功能内容检查 ===')
 const homeHtml = renderRoute('#/')
@@ -216,6 +221,19 @@ contentCheck(appEl._innerHTML, '核心板块', '学生视角首页')
 // 底部 Tab 包含留言区
 renderRoute('#/message')
 contentCheck(appEl._innerHTML, '留言区', '底部Tab包含留言区')
+
+// ===== 学生视角限制 =====
+// 学生首页不显示 AI 教学周报入口
+renderRoute('#/')
+contentNotCheck(appEl._innerHTML, '查看本周 AI 教学周报', '学生首页不显示AI教学周报入口')
+// 学生「我的」不显示教师功能
+renderRoute('#/profile')
+contentNotCheck(appEl._innerHTML, '切换为教师视角', '学生我的不显示切换教师视角')
+contentNotCheck(appEl._innerHTML, '重置演示数据', '学生我的不显示重置演示数据')
+contentNotCheck(appEl._innerHTML, 'AI 教学周报', '学生我的不显示AI教学周报')
+// 学生访问答疑复核应被重定向回首页
+renderRoute('#/review')
+contentNotCheck(appEl._innerHTML, '教师复核权限', '学生访问答疑复核被重定向')
 
 console.log(`\n=== 结果: ${pass} 通过 / ${fail} 失败 ===`)
 process.exit(fail > 0 ? 1 : 0)

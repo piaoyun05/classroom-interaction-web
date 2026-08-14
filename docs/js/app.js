@@ -64,6 +64,7 @@
   }
 
   function resetData() {
+    if (!isTeacher()) return
     var mock = global.MockData
     state.publishes = JSON.parse(JSON.stringify(mock.publishes))
     state.messages = JSON.parse(JSON.stringify(mock.messages))
@@ -413,7 +414,7 @@
       '<div class="hero-greet">' + (isTeacher() ? '教师您好，' : '你好，') + Util.escapeHtml(state.user.name) + ' 👋</div>' +
       '<div class="hero-sub">' + Util.escapeHtml(state.course.name) + ' · ' + Util.escapeHtml(state.course.className) +
       ' · ' + Util.escapeHtml(state.course.semester) + '</div>' +
-      '<div class="hero-ai" data-action="open-weekly"><span class="hero-ai-icon">✨</span> 查看本周 AI 教学周报</div>' +
+      (isTeacher() ? '<div class="hero-ai" data-action="open-weekly"><span class="hero-ai-icon">✨</span> 查看本周 AI 教学周报</div>' : '') +
       '</div>' +
       '<div class="section-title">核心板块</div>' +
       '<div class="module-grid">' +
@@ -901,9 +902,11 @@
       '<div class="menu-item" data-action="go-discussion">💬 我的讨论<span class="menu-arrow">›</span></div>' +
       teacherMenu +
       '<div class="menu-item" data-action="go-personal-study">🎯 个性化学习梳理<span class="menu-arrow">›</span></div>' +
-      '<div class="menu-item" data-action="open-weekly">📊 AI 教学周报<span class="menu-arrow">›</span></div>' +
-      '<div class="menu-item" data-action="toggle-role">🔄 切换' + (isTeacher() ? '为学生视角' : '为教师视角') + '<span class="menu-arrow">›</span></div>' +
-      '<div class="menu-item" data-action="reset-data">🗑️ 重置演示数据<span class="menu-arrow">›</span></div>' +
+      (isTeacher()
+        ? '<div class="menu-item" data-action="open-weekly">📊 AI 教学周报<span class="menu-arrow">›</span></div>' +
+          '<div class="menu-item" data-action="toggle-role">🔄 切换为学生视角<span class="menu-arrow">›</span></div>' +
+          '<div class="menu-item" data-action="reset-data">🗑️ 重置演示数据<span class="menu-arrow">›</span></div>'
+        : '') +
       '</div>' +
       '<div class="profile-footer">AI赋能课堂互动 · 网页演示版</div>' +
       '</div>'
@@ -966,6 +969,14 @@
       return
     }
 
+    // 学生视角禁止访问教师专属页面
+    if (!isTeacher() && (page === 'review' || page === 'teacherConfig' || page === 'courseCreated')) {
+      content = renderHome()
+      app.innerHTML = renderHeader({ page: 'home' }) + content + renderTabBar({ page: 'home' })
+      window.scrollTo(0, 0)
+      return
+    }
+
     if (page === '' || page === 'home') content = renderHome()
     else if (page === 'createCourse') content = renderCreateCourse()
     else if (page === 'courseCreated') content = renderCourseCreated()
@@ -1016,6 +1027,7 @@
   }
 
   function createCourse() {
+    if (state.course && !isTeacher()) { Util.showToast('学生不可创建课程'); return }
     var name = document.getElementById('course-name').value.trim()
     var className = document.getElementById('course-class').value.trim()
     var semester = document.getElementById('course-semester').value.trim()
@@ -1618,13 +1630,10 @@
   }
 
   function toggleRole() {
-    if (isTeacher()) {
-      state.user = { name: '小明同学', role: 'student' }
-    } else {
-      state.user = { name: '张教授', role: 'teacher' }
-    }
+    if (!isTeacher()) { Util.showToast('学生视角不可切换为教师'); return }
+    state.user = { name: '小明同学', role: 'student' }
     saveState()
-    Util.showToast('已切换为' + (isTeacher() ? '教师视角' : '学生视角'), 'success')
+    Util.showToast('已切换为学生视角', 'success')
     renderApp()
   }
 

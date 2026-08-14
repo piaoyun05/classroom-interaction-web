@@ -1,0 +1,221 @@
+<!-- 首页 -->
+<view class="page">
+  <!-- 课程信息头部 -->
+  <view class="course-header">
+    <view class="course-bg"></view>
+    <view class="course-info">
+      <view class="course-name">{{courseName}}</view>
+      <view class="course-meta">
+        <text class="meta-item">授课教师：{{courseTeacher}}</text>
+        <text class="meta-item" bindtap="switchRole">[{{role === 'teacher' ? '教师端' : '学生端'}}]</text>
+      </view>
+    </view>
+
+    <!-- AI 周报入口 -->
+    <view class="ai-report-card" bindtap="viewAiWeekly">
+      <view class="ai-report-left">
+        <view class="ai-icon-mini">AI</view>
+        <view>
+          <view class="ai-report-title">AI教学周报</view>
+          <view class="ai-report-desc">智能总结本周课程互动数据</view>
+        </view>
+      </view>
+      <view class="ai-report-arrow">›</view>
+    </view>
+  </view>
+
+  <!-- Tab 导航 -->
+  <view class="tab-bar">
+    <view
+      wx:for="{{tabs}}"
+      wx:key="*this"
+      class="tab-item {{activeTab === index ? 'active' : ''}}"
+      data-idx="{{index}}"
+      bindtap="switchTab"
+    >
+      <text>{{item}}</text>
+      <view class="tab-line" wx:if="{{activeTab === index}}"></view>
+    </view>
+  </view>
+
+  <!-- 内容区域 -->
+  <swiper class="content-swiper" current="{{activeTab}}" bindchange="swiperChange" duration="300">
+    <!-- Tab1: 教师信息发布区 -->
+    <swiper-item>
+      <scroll-view scroll-y class="content-scroll">
+        <view wx:if="{{role === 'teacher'}}" class="add-btn-wrap">
+          <view class="btn-primary add-btn" bindtap="goPublishNew">
+            <text>+ 发布新内容</text>
+          </view>
+        </view>
+
+        <!-- AI 分类提示 -->
+        <view class="ai-tip-bar">
+          <view class="ai-badge-mini">AI</view>
+          <text class="ai-tip-text">已智能分类 {{publishes.length}} 条内容</text>
+        </view>
+
+        <view wx:for="{{publishes}}" wx:key="id" class="card publish-card" data-id="{{item.id}}" bindtap="goPublishDetail">
+          <view class="publish-header">
+            <view class="tag {{item.category === 'notice' ? 'tag-notice' : item.category === 'knowledge' ? 'tag-knowledge' : item.category === 'homework' ? 'tag-homework' : 'tag-keypoint'}}">
+              {{item.category === 'notice' ? '课程通知' : item.category === 'knowledge' ? '知识点资料' : item.category === 'homework' ? '作业任务' : '教学重点'}}
+            </view>
+            <view wx:if="{{item.isTop}}" class="top-badge">置顶</view>
+            <text class="publish-time">{{item.timeText}}</text>
+          </view>
+          <view class="publish-title">{{item.title}}</view>
+          <view class="publish-summary">{{item.summary}}</view>
+          <view class="publish-footer">
+            <text class="footer-author">{{item.author}}</text>
+            <text class="footer-views">{{item.views}}人查看</text>
+          </view>
+        </view>
+
+        <view wx:if="{{publishes.length === 0}}" class="empty-state">
+          <view class="empty-text">暂无发布内容</view>
+        </view>
+      </scroll-view>
+    </swiper-item>
+
+    <!-- Tab2: 学生留言区 -->
+    <swiper-item>
+      <scroll-view scroll-y class="content-scroll">
+        <view class="add-btn-wrap">
+          <view class="btn-primary add-btn" bindtap="goMessageNew">
+            <text>+ 写留言反馈</text>
+          </view>
+        </view>
+
+        <!-- AI 汇总提示 -->
+        <view class="ai-tip-bar" wx:if="{{role === 'teacher'}}">
+          <view class="ai-badge-mini">AI</view>
+          <text class="ai-tip-text">已智能梳理 {{messages.length}} 条留言，{{unrepliedCount}} 条待回复</text>
+        </view>
+
+        <view wx:for="{{messages}}" wx:key="id" class="card message-card">
+          <view class="message-header">
+            <view class="message-avatar {{item.isAnonymous ? 'anon' : ''}}">
+              <text>{{item.isAnonymous ? '匿' : item.studentName[0]}}</text>
+            </view>
+            <view class="message-info">
+              <view class="message-name">{{item.studentName}}</view>
+              <view class="message-type">{{item.type === 'knowledge' ? '知识点疑问' : item.type === 'suggest' ? '教学建议' : item.type === 'homework' ? '作业问题' : '其他'}}</view>
+            </view>
+            <view class="message-status {{item.replied ? 'replied' : 'pending'}}">
+              {{item.replied ? '已回复' : '待回复'}}
+            </view>
+          </view>
+          <view class="message-content">{{item.content}}</view>
+          <view wx:if="{{item.reply}}" class="message-reply">
+            <view class="reply-label">教师回复：</view>
+            <view class="reply-text">{{item.reply}}</view>
+          </view>
+          <view class="message-time">{{item.timeText}}</view>
+        </view>
+
+        <view wx:if="{{messages.length === 0}}" class="empty-state">
+          <view class="empty-text">暂无留言</view>
+        </view>
+      </scroll-view>
+    </swiper-item>
+
+    <!-- Tab3: 讨论区 -->
+    <swiper-item>
+      <scroll-view scroll-y class="content-scroll">
+        <view class="add-btn-wrap">
+          <view class="btn-primary add-btn" bindtap="goDiscussionNew">
+            <text>+ 发起讨论</text>
+          </view>
+        </view>
+
+        <!-- AI 整理提示 -->
+        <view class="ai-tip-bar">
+          <view class="ai-badge-mini">AI</view>
+          <text class="ai-tip-text">AI已按知识点/习题/经验/疑问分类整理</text>
+        </view>
+
+        <view wx:for="{{discussions}}" wx:key="id" class="card discussion-card" data-id="{{item.id}}" bindtap="goDiscussionDetail">
+          <view class="discussion-header">
+            <view class="discussion-avatar">{{item.author[0]}}</view>
+            <view class="discussion-info">
+              <view class="discussion-author">{{item.author}}</view>
+              <view class="discussion-time">{{item.timeText}}</view>
+            </view>
+            <view class="tag {{item.category === 'knowledge' ? 'tag-notice' : item.category === 'exercise' ? 'tag-homework' : item.category === 'experience' ? 'tag-knowledge' : 'tag-keypoint'}}">
+              {{item.category === 'knowledge' ? '知识点' : item.category === 'exercise' ? '习题答疑' : item.category === 'experience' ? '学习经验' : '课堂疑问'}}
+            </view>
+          </view>
+          <view class="discussion-title">{{item.title}}</view>
+          <view class="discussion-content-preview">{{item.content}}</view>
+          <view class="discussion-footer">
+            <view class="footer-item">
+              <text class="footer-icon">♡</text>
+              <text>{{item.likes}}</text>
+            </view>
+            <view class="footer-item">
+              <text class="footer-icon">💬</text>
+              <text>{{item.comments.length}}</text>
+            </view>
+            <view wx:if="{{item.aiAnswer}}" class="ai-answered-badge">
+              <text>AI已解答</text>
+            </view>
+          </view>
+        </view>
+
+        <view wx:if="{{discussions.length === 0}}" class="empty-state">
+          <view class="empty-text">暂无讨论，快来发起第一个讨论吧</view>
+        </view>
+      </scroll-view>
+    </swiper-item>
+  </swiper>
+</view>
+
+<!-- AI 周报弹窗 -->
+<view wx:if="{{showAiSummary}}" class="modal-mask" bindtap="closeAiSummary">
+  <view class="modal-content ai-report-modal" catchtap="stopPropagation">
+    <view class="modal-header">
+      <view class="modal-title">
+        <view class="ai-icon-mini">AI</view>
+        <text>AI教学周报</text>
+      </view>
+      <view class="modal-close" bindtap="closeAiSummary">✕</view>
+    </view>
+    <scroll-view scroll-y class="modal-body">
+      <view class="report-period">2026年第8周（3月4日-3月10日）</view>
+
+      <view class="report-stats">
+        <view class="stat-item">
+          <view class="stat-num">{{publishes.length}}</view>
+          <view class="stat-label">发布内容</view>
+        </view>
+        <view class="stat-item">
+          <view class="stat-num">{{messages.length}}</view>
+          <view class="stat-label">学生留言</view>
+        </view>
+        <view class="stat-item">
+          <view class="stat-num">{{discussions.length}}</view>
+          <view class="stat-label">讨论帖子</view>
+        </view>
+      </view>
+
+      <view class="report-section">
+        <view class="report-section-title">本周教学重点</view>
+        <view class="report-item">• 完成第三章极限与连续的全部内容教学</view>
+        <view class="report-item">• 重点讲解了ε-δ定义和两个重要极限</view>
+        <view class="report-item">• 布置课后习题1-10题，覆盖主要知识点</view>
+      </view>
+
+      <view class="report-section">
+        <view class="report-section-title">学生问题汇总</view>
+        <view class="report-item">• 高频问题TOP1：ε-δ定义理解困难（8人提及）</view>
+        <view class="report-item">• 高频问题TOP2：作业第3题解题思路（6人提及）</view>
+        <view class="report-item">• 高频问题TOP3：课堂节奏偏快（4人提及）</view>
+      </view>
+
+      <view class="report-section">
+        <view class="report-section-title">AI教学建议</view>
+        <view class="report-suggestion">建议下周课堂重点回顾第三章核心定理，并增加相关例题讲解。同时关注作业第3题的共性问题，可安排课堂集中答疑。</view>
+      </view>
+    </scroll-view>
+  </view>
+</view>

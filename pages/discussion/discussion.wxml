@@ -1,0 +1,58 @@
+<view class="page">
+  <!-- 筛选栏 -->
+  <scroll-view scroll-x class="filter-bar" enhanced show-scrollbar="{{false}}">
+    <view
+      wx:for="{{filters}}"
+      wx:key="key"
+      class="filter-item {{filter === item.key ? 'active' : ''}}"
+      data-key="{{item.key}}"
+      bindtap="switchFilter"
+    >{{item.label}}</view>
+  </scroll-view>
+
+  <!-- AI整理提示 -->
+  <view class="ai-tip-bar">
+    <view class="ai-badge-mini">AI</view>
+    <text class="ai-tip-text">AI已按知识点/习题/经验/疑问自动分类整理</text>
+  </view>
+
+  <!-- 讨论列表 -->
+  <scroll-view scroll-y class="content-list">
+    <view wx:for="{{discussions}}" wx:key="id" class="card discussion-card" data-id="{{item.id}}" bindtap="goDetail">
+      <view class="discussion-header">
+        <view class="discussion-avatar">{{item.author[0]}}</view>
+        <view class="discussion-info">
+          <view class="discussion-author">{{item.author}}</view>
+          <view class="discussion-time">{{item.timeText}}</view>
+        </view>
+        <view class="tag {{item.category === 'knowledge' ? 'tag-notice' : item.category === 'exercise' ? 'tag-homework' : item.category === 'experience' ? 'tag-knowledge' : 'tag-keypoint'}}">
+          {{item.category === 'knowledge' ? '知识点' : item.category === 'exercise' ? '习题答疑' : item.category === 'experience' ? '学习经验' : '课堂疑问'}}
+        </view>
+      </view>
+      <view class="discussion-title">{{item.title}}</view>
+      <view class="discussion-content-preview">{{item.content}}</view>
+      <view class="discussion-footer">
+        <view class="footer-item">
+          <text class="footer-icon">♡</text>
+          <text>{{item.likes}}</text>
+        </view>
+        <view class="footer-item">
+          <text class="footer-icon">💬</text>
+          <text>{{item.comments.length}}</text>
+        </view>
+        <view wx:if="{{item.aiAnswer}}" class="ai-answered-badge">
+          <text>AI已解答</text>
+        </view>
+      </view>
+    </view>
+
+    <view wx:if="{{discussions.length === 0}}" class="empty-state">
+      <view class="empty-text">暂无讨论，快来发起第一个讨论吧</view>
+    </view>
+  </scroll-view>
+
+  <!-- 发帖按钮 -->
+  <view class="fab-btn" bindtap="goNew">
+    <text class="fab-icon">+</text>
+  </view>
+</view>

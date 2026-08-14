@@ -1,0 +1,54 @@
+<view class="page">
+  <!-- 隐私提示 -->
+  <view class="privacy-bar">
+    <text class="privacy-icon">🔒</text>
+    <text class="privacy-text">留言仅教师和本人可见，请放心提问</text>
+  </view>
+
+  <!-- 类型选择 -->
+  <view class="card">
+    <view class="input-label">问题类型</view>
+    <view class="type-grid">
+      <view
+        wx:for="{{types}}"
+        wx:key="key"
+        class="type-item {{type === item.key ? 'active' : ''}}"
+        data-key="{{item.key}}"
+        bindtap="selectType"
+      >{{item.label}}</view>
+    </view>
+  </view>
+
+  <!-- 内容输入 -->
+  <view class="card">
+    <view class="input-label">留言内容</view>
+    <textarea
+      class="content-input"
+      placeholder="请描述您的问题、建议或困难..."
+      value="{{content}}"
+      bindinput="onContentInput"
+      maxlength="-1"
+      auto-height
+    />
+  </view>
+
+  <!-- 匿名选项 -->
+  <view class="card option-card">
+    <view class="option-item" bindtap="toggleAnonymous">
+      <view>
+        <text class="option-label">匿名留言</text>
+        <view class="option-desc">开启后教师无法看到您的姓名</view>
+      </view>
+      <view class="switch {{isAnonymous ? 'on' : ''}}">
+        <view class="switch-dot"></view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 提交按钮 -->
+  <view class="submit-area">
+    <view class="btn-primary submit-btn" bindtap="submit">
+      <text>{{submitting ? '提交中...' : '提交留言'}}</text>
+    </view>
+  </view>
+</view>

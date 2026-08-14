@@ -1,0 +1,98 @@
+<view class="page">
+  <!-- AI 头部 -->
+  <view class="ai-header">
+    <view class="ai-header-bg"></view>
+    <view class="ai-header-content">
+      <view class="ai-logo">AI</view>
+      <view class="ai-title">课程智能问答</view>
+      <view class="ai-subtitle">基于「{{courseName}}」专属知识库</view>
+    </view>
+  </view>
+
+  <!-- 快捷问题 -->
+  <view class="quick-section" wx:if="{{!result && !loading}}">
+    <view class="section-title">快捷提问</view>
+    <view class="quick-list">
+      <view
+        wx:for="{{quickQuestions}}"
+        wx:key="*this"
+        class="quick-item"
+        data-question="{{item}}"
+        bindtap="quickAsk"
+      >{{item}}</view>
+    </view>
+  </view>
+
+  <!-- 历史记录 -->
+  <view class="history-section" wx:if="{{!result && !loading && history.length > 0}}">
+    <view class="section-header">
+      <view class="section-title">最近提问</view>
+      <view class="clear-btn" bindtap="clearHistory">清空</view>
+    </view>
+    <view wx:for="{{history}}" wx:key="time" class="history-item">
+      <view class="history-question">
+        <text class="history-icon">Q</text>
+        <text>{{item.question}}</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 加载状态 -->
+  <view wx:if="{{loading}}" class="loading-state">
+    <view class="ai-logo spinning">AI</view>
+    <view class="loading-dots">
+      <view class="loading-dot"></view>
+      <view class="loading-dot"></view>
+      <view class="loading-dot"></view>
+    </view>
+    <text class="loading-text">AI正在检索课程知识库...</text>
+  </view>
+
+  <!-- 回答结果 -->
+  <view wx:if="{{result}}" class="result-section">
+    <view class="result-card">
+      <view class="result-header">
+        <view class="ai-badge-mini">AI</view>
+        <text class="result-label">智能回答</text>
+      </view>
+      <view class="result-answer">{{result.answer}}</view>
+    </view>
+
+    <!-- 来源 -->
+    <view class="sources-card" wx:if="{{result.sources && result.sources.length}}">
+      <view class="sources-title">参考来源</view>
+      <view wx:for="{{result.sources}}" wx:key="type" class="source-item">
+        <view class="source-type">{{item.type}}</view>
+        <view class="source-title">{{item.title}}</view>
+      </view>
+    </view>
+
+    <!-- 相关问题 -->
+    <view class="related-card" wx:if="{{result.relatedQuestions && result.relatedQuestions.length}}">
+      <view class="related-title">相关问题</view>
+      <view wx:for="{{result.relatedQuestions}}" wx:key="*this" class="related-item" data-question="{{item}}" bindtap="quickAsk">
+        <text class="related-icon">›</text>
+        <text>{{item}}</text>
+      </view>
+    </view>
+
+    <view class="result-actions">
+      <view class="btn-outline result-btn" bindtap="clearResult">继续提问</view>
+    </view>
+  </view>
+
+  <!-- 底部输入 -->
+  <view class="input-bar">
+    <input
+      class="qa-input"
+      placeholder="输入课程相关问题..."
+      value="{{inputText}}"
+      bindinput="onInput"
+      confirm-type="send"
+      bindconfirm="ask"
+    />
+    <view class="send-btn {{inputText ? 'active' : ''}}" bindtap="ask">
+      <text>发送</text>
+    </view>
+  </view>
+</view>

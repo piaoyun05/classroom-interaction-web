@@ -1,0 +1,95 @@
+<view class="page" wx:if="{{discussion}}">
+  <!-- 帖子内容 -->
+  <view class="card post-card">
+    <view class="post-header">
+      <view class="post-avatar">{{discussion.author[0]}}</view>
+      <view class="post-info">
+        <view class="post-author">{{discussion.author}}</view>
+        <view class="post-time">{{discussion.timeText}}</view>
+      </view>
+      <view class="tag {{discussion.category === 'knowledge' ? 'tag-notice' : discussion.category === 'exercise' ? 'tag-homework' : discussion.category === 'experience' ? 'tag-knowledge' : 'tag-keypoint'}}">
+        {{discussion.category === 'knowledge' ? '知识点' : discussion.category === 'exercise' ? '习题答疑' : discussion.category === 'experience' ? '学习经验' : '课堂疑问'}}
+      </view>
+    </view>
+
+    <view class="post-title">{{discussion.title}}</view>
+    <view class="post-content">{{discussion.content}}</view>
+
+    <view class="post-actions">
+      <view class="action-item {{liked ? 'liked' : ''}}" bindtap="toggleLike">
+        <text class="action-icon">{{liked ? '♥' : '♡'}}</text>
+        <text>{{discussion.likes}}</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- AI 解答区域（核心创新功能） -->
+  <view class="card ai-answer-card">
+    <view wx:if="{{!discussion.aiAnswer && !aiLoading}}" class="ai-answer-trigger" bindtap="getAiAnswer">
+      <view class="ai-answer-btn">
+        <view class="ai-icon-large">AI</view>
+        <view class="ai-btn-text">
+          <view class="ai-btn-title">AI智能解答</view>
+          <view class="ai-btn-desc">一键生成解题思路与标准答案</view>
+        </view>
+        <view class="ai-btn-arrow">›</view>
+      </view>
+    </view>
+
+    <view wx:if="{{aiLoading}}" class="ai-loading-state">
+      <view class="ai-icon-large spinning">AI</view>
+      <view class="loading-dots">
+        <view class="loading-dot"></view>
+        <view class="loading-dot"></view>
+        <view class="loading-dot"></view>
+      </view>
+      <text class="loading-text">AI正在分析问题并生成解答...</text>
+    </view>
+
+    <view wx:if="{{discussion.aiAnswer}}" class="ai-answer-content">
+      <view class="ai-answer-header">
+        <view class="ai-icon-large">AI</view>
+        <view>
+          <view class="ai-answer-title">AI智能解答</view>
+          <view class="ai-answer-time">{{discussion.aiAnswerTimeText}}</view>
+        </view>
+      </view>
+      <view class="ai-answer-body">{{discussion.aiAnswer}}</view>
+      <view class="ai-answer-footer">
+        <text class="ai-tag">基于本课程知识库生成</text>
+        <text class="ai-tag">教师可复核修改</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 评论区 -->
+  <view class="card comments-card">
+    <view class="comments-title">评论 ({{discussion.comments.length}})</view>
+
+    <view wx:for="{{discussion.comments}}" wx:key="createTime" class="comment-item">
+      <view class="comment-avatar">{{item.author[0]}}</view>
+      <view class="comment-body">
+        <view class="comment-author">{{item.author}}</view>
+        <view class="comment-content">{{item.content}}</view>
+        <view class="comment-time">{{item.timeText}}</view>
+      </view>
+    </view>
+
+    <view wx:if="{{discussion.comments.length === 0}}" class="no-comment">
+      暂无评论，快来发表你的看法吧
+    </view>
+  </view>
+
+  <!-- 底部评论输入 -->
+  <view class="comment-bar">
+    <input
+      class="comment-input"
+      placeholder="发表评论..."
+      value="{{commentText}}"
+      bindinput="onCommentInput"
+      confirm-type="send"
+      bindconfirm="submitComment"
+    />
+    <view class="comment-send" bindtap="submitComment">发送</view>
+  </view>
+</view>

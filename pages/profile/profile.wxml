@@ -1,0 +1,71 @@
+<view class="page">
+  <!-- 用户信息头部 -->
+  <view class="profile-header">
+    <view class="profile-bg"></view>
+    <view class="profile-info">
+      <view class="profile-avatar">
+        <text>{{role === 'teacher' ? courseTeacher[0] : '我'}}</text>
+      </view>
+      <view class="profile-detail">
+        <view class="profile-name">{{role === 'teacher' ? courseTeacher : '同学'}}</view>
+        <view class="profile-role">{{role === 'teacher' ? '教师' : '学生'}} · {{courseName}}</view>
+      </view>
+      <view class="role-switch" bindtap="switchRole">
+        <text>切换{{role === 'teacher' ? '学生' : '教师'}}端</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 数据统计 -->
+  <view class="stats-card">
+    <view class="stat-item">
+      <view class="stat-num">{{stats.publishCount || 0}}</view>
+      <view class="stat-label">{{role === 'teacher' ? '已发布' : '资讯'}}</view>
+    </view>
+    <view class="stat-divider"></view>
+    <view class="stat-item">
+      <view class="stat-num">{{stats.messageCount || 0}}</view>
+      <view class="stat-label">留言</view>
+    </view>
+    <view class="stat-divider"></view>
+    <view class="stat-item">
+      <view class="stat-num">{{stats.discussionCount || 0}}</view>
+      <view class="stat-label">讨论</view>
+    </view>
+    <view class="stat-divider"></view>
+    <view class="stat-item" wx:if="{{role === 'teacher'}}">
+      <view class="stat-num warn">{{stats.unansweredCount || 0}}</view>
+      <view class="stat-label">待回复</view>
+    </view>
+    <view class="stat-item" wx:else>
+      <view class="stat-num">{{stats.discussionCount || 0}}</view>
+      <view class="stat-label">参与</view>
+    </view>
+  </view>
+
+  <!-- 功能菜单 -->
+  <view class="menu-card">
+    <view
+      wx:for="{{menuItems}}"
+      wx:key="label"
+      class="menu-item"
+      data-path="{{item.path}}"
+      bindtap="goMenu"
+    >
+      <view class="menu-icon">{{item.icon}}</view>
+      <view class="menu-label">{{item.label}}</view>
+      <view class="menu-arrow">›</view>
+    </view>
+  </view>
+
+  <!-- 其他 -->
+  <view class="menu-card">
+    <view class="menu-item" bindtap="about">
+      <view class="menu-icon">ℹ️</view>
+      <view class="menu-label">关于本程序</view>
+      <view class="menu-arrow">›</view>
+    </view>
+  </view>
+
+  <view class="version-text">AI赋能课堂互动 v1.0</view>
+</view>

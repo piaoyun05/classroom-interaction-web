@@ -1,0 +1,156 @@
+/* 个人中心页样式 */
+.page {
+  min-height: 100vh;
+  padding: 0 24rpx 40rpx;
+}
+
+/* 头部 */
+.profile-header {
+  position: relative;
+  margin: 0 -24rpx;
+  padding: 0 24rpx 32rpx;
+}
+
+.profile-bg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 280rpx;
+  background: linear-gradient(135deg, #4A6CF7 0%, #6B8CFA 50%, #8B6CF7 100%);
+  border-radius: 0 0 32rpx 32rpx;
+}
+
+.profile-info {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 24rpx;
+  padding-top: 60rpx;
+}
+
+.profile-avatar {
+  width: 120rpx;
+  height: 120rpx;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.25);
+  backdrop-filter: blur(10rpx);
+  border: 4rpx solid rgba(255, 255, 255, 0.4);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 48rpx;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.profile-detail {
+  flex: 1;
+}
+
+.profile-name {
+  font-size: 38rpx;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 8rpx;
+}
+
+.profile-role {
+  font-size: 24rpx;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.role-switch {
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+  font-size: 22rpx;
+  padding: 10rpx 24rpx;
+  border-radius: 24rpx;
+  border: 1rpx solid rgba(255, 255, 255, 0.3);
+}
+
+/* 统计卡片 */
+.stats-card {
+  display: flex;
+  align-items: center;
+  background: #fff;
+  border-radius: 20rpx;
+  padding: 32rpx 24rpx;
+  margin-top: -20rpx;
+  box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.06);
+  position: relative;
+  z-index: 10;
+}
+
+.stat-item {
+  flex: 1;
+  text-align: center;
+}
+
+.stat-num {
+  font-size: 44rpx;
+  font-weight: 700;
+  color: #4A6CF7;
+}
+
+.stat-num.warn {
+  color: #FF8800;
+}
+
+.stat-label {
+  font-size: 22rpx;
+  color: #999;
+  margin-top: 8rpx;
+}
+
+.stat-divider {
+  width: 1rpx;
+  height: 60rpx;
+  background: #f0f0f0;
+}
+
+/* 菜单 */
+.menu-card {
+  background: #fff;
+  border-radius: 20rpx;
+  margin-top: 20rpx;
+  overflow: hidden;
+  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.04);
+}
+
+.menu-item {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+  padding: 28rpx;
+  border-bottom: 1rpx solid #f5f5f5;
+}
+
+.menu-item:last-child {
+  border-bottom: none;
+}
+
+.menu-icon {
+  font-size: 40rpx;
+  width: 48rpx;
+  text-align: center;
+}
+
+.menu-label {
+  flex: 1;
+  font-size: 30rpx;
+  color: #333;
+}
+
+.menu-arrow {
+  font-size: 40rpx;
+  color: #ccc;
+}
+
+.version-text {
+  text-align: center;
+  font-size: 22rpx;
+  color: #ccc;
+  padding: 40rpx 0;
+}

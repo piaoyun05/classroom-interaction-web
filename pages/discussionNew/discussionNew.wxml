@@ -1,0 +1,53 @@
+<view class="page">
+  <!-- 分类选择 -->
+  <view class="card">
+    <view class="input-label">讨论分类</view>
+    <view class="category-grid">
+      <view
+        wx:for="{{categories}}"
+        wx:key="key"
+        class="category-item {{category === item.key ? 'active' : ''}}"
+        data-key="{{item.key}}"
+        bindtap="selectCategory"
+      >{{item.label}}</view>
+    </view>
+  </view>
+
+  <!-- 标题 -->
+  <view class="card">
+    <view class="input-label">标题</view>
+    <input
+      class="title-input"
+      placeholder="请输入讨论标题"
+      value="{{title}}"
+      bindinput="onTitleInput"
+      maxlength="50"
+    />
+  </view>
+
+  <!-- 内容 -->
+  <view class="card">
+    <view class="input-label">内容详情</view>
+    <textarea
+      class="content-input"
+      placeholder="详细描述你的问题或观点，同学们可以评论讨论..."
+      value="{{content}}"
+      bindinput="onContentInput"
+      maxlength="-1"
+      auto-height
+    />
+  </view>
+
+  <!-- AI提示 -->
+  <view class="ai-tip-bar">
+    <view class="ai-badge-mini">AI</view>
+    <text class="ai-tip-text">发布后可点击"AI解答"按钮获取智能答疑</text>
+  </view>
+
+  <!-- 提交 -->
+  <view class="submit-area">
+    <view class="btn-primary submit-btn" bindtap="submit">
+      <text>{{submitting ? '发布中...' : '发布讨论'}}</text>
+    </view>
+  </view>
+</view>

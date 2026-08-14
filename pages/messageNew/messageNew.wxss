@@ -1,0 +1,121 @@
+/* 留言发布页样式 */
+.page {
+  min-height: 100vh;
+  padding: 24rpx;
+  padding-bottom: 160rpx;
+}
+
+.privacy-bar {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  padding: 16rpx 24rpx;
+  background: rgba(74, 108, 247, 0.06);
+  border-radius: 12rpx;
+  margin-bottom: 20rpx;
+}
+
+.privacy-icon { font-size: 28rpx; }
+.privacy-text { font-size: 24rpx; color: #4A6CF7; }
+
+.input-label {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 20rpx;
+}
+
+/* 类型选择 */
+.type-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+}
+
+.type-item {
+  padding: 16rpx 28rpx;
+  border-radius: 32rpx;
+  font-size: 26rpx;
+  color: #666;
+  background: #F5F6FA;
+  border: 2rpx solid transparent;
+}
+
+.type-item.active {
+  background: rgba(74, 108, 247, 0.1);
+  color: #4A6CF7;
+  border-color: #4A6CF7;
+}
+
+/* 内容输入 */
+.content-input {
+  width: 100%;
+  font-size: 30rpx;
+  line-height: 1.6;
+  min-height: 240rpx;
+  padding: 8rpx 0;
+}
+
+/* 选项 */
+.option-card { padding: 0 28rpx; }
+
+.option-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 28rpx 0;
+}
+
+.option-label {
+  font-size: 30rpx;
+  color: #333;
+}
+
+.option-desc {
+  font-size: 22rpx;
+  color: #999;
+  margin-top: 4rpx;
+}
+
+.switch {
+  width: 84rpx;
+  height: 48rpx;
+  border-radius: 24rpx;
+  background: #ddd;
+  position: relative;
+  transition: all 0.3s;
+  flex-shrink: 0;
+}
+
+.switch.on { background: #4A6CF7; }
+
+.switch-dot {
+  position: absolute;
+  top: 4rpx;
+  left: 4rpx;
+  width: 40rpx;
+  height: 40rpx;
+  border-radius: 50%;
+  background: #fff;
+  transition: all 0.3s;
+}
+
+.switch.on .switch-dot { left: 40rpx; }
+
+/* 提交 */
+.submit-area {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 20rpx 32rpx;
+  padding-bottom: calc(20rpx + env(safe-area-inset-bottom));
+  background: #fff;
+  box-shadow: 0 -2rpx 12rpx rgba(0, 0, 0, 0.06);
+}
+
+.submit-btn {
+  width: 100%;
+  text-align: center;
+  padding: 24rpx 0;
+}

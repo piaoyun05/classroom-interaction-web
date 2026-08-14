@@ -1,0 +1,167 @@
+/* 发布详情页样式 */
+.page {
+  min-height: 100vh;
+  padding: 24rpx;
+}
+
+.detail-card {
+  background: #fff;
+  border-radius: 20rpx;
+  padding: 32rpx;
+  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.04);
+}
+
+.detail-tags {
+  display: flex;
+  gap: 12rpx;
+  margin-bottom: 20rpx;
+}
+
+.top-badge {
+  background: #FF6B6B;
+  color: #fff;
+  font-size: 20rpx;
+  padding: 4rpx 12rpx;
+  border-radius: 6rpx;
+}
+
+.detail-title {
+  font-size: 40rpx;
+  font-weight: 700;
+  color: #1a1a1a;
+  line-height: 1.4;
+  margin-bottom: 24rpx;
+}
+
+.detail-meta {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  padding-bottom: 24rpx;
+  border-bottom: 1rpx solid #f0f0f0;
+  margin-bottom: 24rpx;
+}
+
+.meta-avatar {
+  width: 72rpx;
+  height: 72rpx;
+  border-radius: 50%;
+  background: #4A6CF7;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32rpx;
+  font-weight: 600;
+}
+
+.meta-author {
+  font-size: 28rpx;
+  font-weight: 500;
+  color: #333;
+}
+
+.meta-time {
+  font-size: 22rpx;
+  color: #bbb;
+  margin-top: 4rpx;
+}
+
+/* AI 摘要 */
+.ai-summary-box {
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.06) 0%, rgba(118, 75, 162, 0.06) 100%);
+  border-radius: 16rpx;
+  padding: 24rpx;
+  margin-bottom: 28rpx;
+}
+
+.ai-summary-header {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  margin-bottom: 12rpx;
+}
+
+.ai-badge-mini {
+  width: 36rpx;
+  height: 36rpx;
+  border-radius: 8rpx;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20rpx;
+  font-weight: 700;
+}
+
+.ai-summary-label {
+  font-size: 26rpx;
+  font-weight: 600;
+  color: #667eea;
+}
+
+.ai-summary-text {
+  font-size: 28rpx;
+  color: #555;
+  line-height: 1.6;
+}
+
+.detail-content {
+  font-size: 30rpx;
+  color: #333;
+  line-height: 1.8;
+  margin-bottom: 28rpx;
+}
+
+/* 附件 */
+.attachments {
+  margin-bottom: 24rpx;
+}
+
+.attachment-title {
+  font-size: 26rpx;
+  color: #999;
+  margin-bottom: 12rpx;
+}
+
+.attachment-item {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  padding: 20rpx;
+  background: #F8F9FE;
+  border-radius: 12rpx;
+  margin-bottom: 12rpx;
+}
+
+.attachment-icon {
+  font-size: 40rpx;
+}
+
+.attachment-name {
+  font-size: 28rpx;
+  color: #333;
+}
+
+.attachment-size {
+  font-size: 22rpx;
+  color: #999;
+  margin-top: 4rpx;
+}
+
+/* 截止时间 */
+.deadline-box {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  padding: 20rpx;
+  background: #FFF3E0;
+  border-radius: 12rpx;
+  font-size: 26rpx;
+  color: #FF8800;
+}
+
+.deadline-icon {
+  font-size: 32rpx;
+}

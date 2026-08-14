@@ -1,0 +1,417 @@
+/* 留言列表页样式 */
+.page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  padding: 0 24rpx;
+}
+
+.notice-bar {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  padding: 16rpx 24rpx;
+  margin: 20rpx 0 0;
+  background: rgba(74, 108, 247, 0.06);
+  border-radius: 12rpx;
+}
+
+.notice-icon {
+  font-size: 28rpx;
+}
+
+.notice-text {
+  font-size: 24rpx;
+  color: #4A6CF7;
+}
+
+/* AI 汇总入口 */
+.ai-summary-entry {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  background: #fff;
+  border-radius: 16rpx;
+  padding: 24rpx 28rpx;
+  margin-top: 20rpx;
+  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.04);
+}
+
+.ai-badge-mini {
+  width: 48rpx;
+  height: 48rpx;
+  border-radius: 12rpx;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22rpx;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.entry-info {
+  flex: 1;
+}
+
+.entry-title {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #333;
+}
+
+.entry-desc {
+  font-size: 22rpx;
+  color: #999;
+  margin-top: 4rpx;
+}
+
+.entry-arrow {
+  font-size: 40rpx;
+  color: #ccc;
+}
+
+/* 添加按钮 */
+.add-btn-wrap {
+  margin: 20rpx 0;
+}
+
+.add-btn {
+  width: 100%;
+  text-align: center;
+  padding: 22rpx 0;
+  font-size: 28rpx;
+}
+
+/* 留言列表 */
+.message-list {
+  flex: 1;
+  padding-bottom: 120rpx;
+}
+
+.message-card {
+  position: relative;
+}
+
+.message-header {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  margin-bottom: 16rpx;
+}
+
+.message-avatar {
+  width: 64rpx;
+  height: 64rpx;
+  border-radius: 50%;
+  background: #4A6CF7;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28rpx;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.message-avatar.anon {
+  background: #999;
+}
+
+.message-info {
+  flex: 1;
+}
+
+.message-name {
+  font-size: 28rpx;
+  font-weight: 500;
+  color: #333;
+}
+
+.message-type {
+  font-size: 22rpx;
+  color: #999;
+  margin-top: 4rpx;
+}
+
+.message-status {
+  font-size: 22rpx;
+  padding: 4rpx 16rpx;
+  border-radius: 20rpx;
+}
+
+.message-status.replied {
+  background: #E8F8E8;
+  color: #34A853;
+}
+
+.message-status.pending {
+  background: #FFF3E0;
+  color: #FF8800;
+}
+
+.message-content {
+  font-size: 28rpx;
+  color: #333;
+  line-height: 1.5;
+  margin-bottom: 12rpx;
+}
+
+.message-reply {
+  background: #F8F9FE;
+  border-radius: 12rpx;
+  padding: 16rpx 20rpx;
+  margin-top: 12rpx;
+}
+
+.reply-label {
+  font-size: 24rpx;
+  color: #4A6CF7;
+  font-weight: 500;
+  margin-bottom: 8rpx;
+}
+
+.reply-text {
+  font-size: 26rpx;
+  color: #555;
+  line-height: 1.5;
+}
+
+.message-time {
+  font-size: 22rpx;
+  color: #ccc;
+  margin-top: 12rpx;
+}
+
+/* 弹窗 */
+.modal-mask {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-content {
+  width: 88%;
+  max-height: 80vh;
+  background: #fff;
+  border-radius: 24rpx;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 28rpx;
+  border-bottom: 1rpx solid #eee;
+}
+
+.modal-title {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  font-size: 32rpx;
+  font-weight: 600;
+}
+
+.modal-close {
+  font-size: 36rpx;
+  color: #999;
+  padding: 8rpx;
+}
+
+.modal-body {
+  padding: 28rpx;
+  max-height: 60vh;
+}
+
+/* 加载状态 */
+.loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 80rpx 0;
+  gap: 20rpx;
+}
+
+.loading-state .loading-dot {
+  display: inline-block;
+  width: 16rpx;
+  height: 16rpx;
+  border-radius: 50%;
+  background: #667eea;
+  animation: bounce 0.6s infinite alternate;
+}
+
+.loading-state .loading-dot:nth-child(2) { animation-delay: 0.2s; }
+.loading-state .loading-dot:nth-child(3) { animation-delay: 0.4s; }
+
+.loading-state {
+  flex-direction: row;
+  justify-content: center;
+}
+
+.loading-text {
+  font-size: 26rpx;
+  color: #999;
+  margin-top: 16rpx;
+}
+
+@keyframes bounce {
+  to { opacity: 0.3; transform: translateY(-8rpx); }
+}
+
+/* 统计 */
+.summary-stats {
+  display: flex;
+  justify-content: space-around;
+  margin-bottom: 28rpx;
+  padding: 24rpx;
+  background: #F8F9FE;
+  border-radius: 16rpx;
+}
+
+.stat-item {
+  text-align: center;
+}
+
+.stat-num {
+  font-size: 48rpx;
+  font-weight: 700;
+  color: #4A6CF7;
+}
+
+.stat-num.warn {
+  color: #FF8800;
+}
+
+.stat-label {
+  font-size: 22rpx;
+  color: #999;
+  margin-top: 4rpx;
+}
+
+/* 分区 */
+.summary-section {
+  margin-bottom: 28rpx;
+}
+
+.summary-section-title {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 16rpx;
+  padding-left: 16rpx;
+  border-left: 6rpx solid #667eea;
+}
+
+/* 分布条 */
+.dist-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+
+.dist-item {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+
+.dist-label {
+  font-size: 24rpx;
+  color: #666;
+  width: 120rpx;
+  flex-shrink: 0;
+}
+
+.dist-progress {
+  flex: 1;
+  height: 16rpx;
+  background: #f0f0f0;
+  border-radius: 8rpx;
+  overflow: hidden;
+}
+
+.dist-fill {
+  height: 100%;
+  background: #4A6CF7;
+  border-radius: 8rpx;
+  transition: width 0.6s;
+}
+
+.dist-fill.orange { background: #FF8800; }
+.dist-fill.green { background: #34A853; }
+.dist-fill.gray { background: #999; }
+
+.dist-num {
+  font-size: 24rpx;
+  color: #666;
+  width: 40rpx;
+  text-align: right;
+}
+
+/* TOP问题 */
+.top-issue-item {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  padding: 16rpx 0;
+  border-bottom: 1rpx solid #f5f5f5;
+}
+
+.top-issue-item:last-child {
+  border-bottom: none;
+}
+
+.rank-badge {
+  width: 40rpx;
+  height: 40rpx;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24rpx;
+  font-weight: 700;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.rank-1 { background: #FF6B6B; }
+.rank-2 { background: #FFA94D; }
+.rank-3 { background: #FFD43B; color: #888; }
+
+.issue-info {
+  flex: 1;
+}
+
+.issue-question {
+  font-size: 28rpx;
+  color: #333;
+  line-height: 1.4;
+}
+
+.issue-meta {
+  font-size: 22rpx;
+  color: #999;
+  margin-top: 4rpx;
+}
+
+.summary-text {
+  font-size: 26rpx;
+  color: #555;
+  line-height: 1.6;
+  background: rgba(102, 126, 234, 0.06);
+  border-radius: 12rpx;
+  padding: 20rpx;
+}

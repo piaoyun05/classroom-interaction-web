@@ -1,0 +1,73 @@
+<view class="page">
+  <!-- 标题输入 -->
+  <view class="card">
+    <view class="input-label">标题</view>
+    <input
+      class="title-input"
+      placeholder="请输入标题"
+      value="{{title}}"
+      bindinput="onTitleInput"
+      maxlength="50"
+    />
+  </view>
+
+  <!-- 内容输入 -->
+  <view class="card">
+    <view class="input-label">内容</view>
+    <textarea
+      class="content-input"
+      placeholder="请输入内容详情，支持文字描述..."
+      value="{{content}}"
+      bindinput="onContentInput"
+      maxlength="-1"
+      auto-height
+    />
+  </view>
+
+  <!-- 选项 -->
+  <view class="card option-card">
+    <view class="option-item" bindtap="toggleTop">
+      <text class="option-label">置顶</text>
+      <view class="switch {{isTop ? 'on' : ''}}">
+        <view class="switch-dot"></view>
+      </view>
+    </view>
+  </view>
+
+  <!-- AI 智能处理 -->
+  <view class="card ai-process-card">
+    <view class="ai-process-header" bindtap="aiProcess">
+      <view class="ai-badge-mini">AI</view>
+      <text class="ai-process-label">AI智能分类与摘要</text>
+      <view class="ai-process-btn" wx:if="{{!aiProcessing}}">
+        <text>{{aiResult ? '重新分析' : '开始分析'}}</text>
+      </view>
+      <view wx:else class="ai-loading">
+        <view class="loading-dot"></view>
+        <view class="loading-dot"></view>
+        <view class="loading-dot"></view>
+      </view>
+    </view>
+
+    <view wx:if="{{aiResult}}" class="ai-result">
+      <view class="ai-result-row">
+        <text class="result-key">智能分类：</text>
+        <view class="tag {{aiResult.category === 'notice' ? 'tag-notice' : aiResult.category === 'knowledge' ? 'tag-knowledge' : aiResult.category === 'homework' ? 'tag-homework' : 'tag-keypoint'}}">
+          {{aiResult.categoryLabel}}
+        </view>
+        <text class="confidence">置信度 {{aiResult.confidence}}%</text>
+      </view>
+      <view class="ai-result-row">
+        <text class="result-key">内容摘要：</text>
+        <text class="result-value">{{aiResult.summary}}</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 提交按钮 -->
+  <view class="submit-area">
+    <view class="btn-primary submit-btn" bindtap="submit">
+      <text>{{submitting ? '发布中...' : '发布'}}</text>
+    </view>
+  </view>
+</view>

@@ -1,0 +1,133 @@
+/* 全局样式 */
+page {
+  background-color: #F5F6FA;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-size: 28rpx;
+  color: #333;
+  box-sizing: border-box;
+}
+
+view, text, image, scroll-view, swiper {
+  box-sizing: border-box;
+}
+
+/* 通用容器 */
+.container {
+  padding: 24rpx;
+}
+
+/* 卡片样式 */
+.card {
+  background: #fff;
+  border-radius: 16rpx;
+  padding: 28rpx;
+  margin-bottom: 20rpx;
+  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.04);
+}
+
+/* 主色调 */
+.primary-color {
+  color: #4A6CF7;
+}
+
+.primary-bg {
+  background-color: #4A6CF7;
+}
+
+/* 标签样式 */
+.tag {
+  display: inline-block;
+  padding: 4rpx 16rpx;
+  border-radius: 8rpx;
+  font-size: 22rpx;
+  font-weight: 500;
+}
+
+.tag-notice { background: #E8F0FE; color: #4A6CF7; }
+.tag-knowledge { background: #E8F8E8; color: #34A853; }
+.tag-homework { background: #FFF3E0; color: #FF8800; }
+.tag-keypoint { background: #FCE4EC; color: #E91E63; }
+.tag-ai { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #fff; }
+
+/* 按钮样式 */
+.btn-primary {
+  background: linear-gradient(135deg, #4A6CF7 0%, #6B8CFA 100%);
+  color: #fff;
+  border: none;
+  border-radius: 48rpx;
+  padding: 20rpx 48rpx;
+  font-size: 30rpx;
+  font-weight: 500;
+  text-align: center;
+  display: inline-block;
+}
+
+.btn-primary::after {
+  border: none;
+}
+
+.btn-outline {
+  background: #fff;
+  color: #4A6CF7;
+  border: 2rpx solid #4A6CF7;
+  border-radius: 48rpx;
+  padding: 18rpx 46rpx;
+  font-size: 30rpx;
+  text-align: center;
+}
+
+.btn-outline::after {
+  border: none;
+}
+
+/* AI 特殊渐变 */
+.ai-gradient {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.ai-gradient-text {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* 分割线 */
+.divider {
+  height: 1rpx;
+  background: #eee;
+  margin: 20rpx 0;
+}
+
+/* 空状态 */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 120rpx 0;
+}
+
+.empty-state .empty-icon {
+  width: 160rpx;
+  height: 160rpx;
+  opacity: 0.3;
+  margin-bottom: 24rpx;
+}
+
+.empty-state .empty-text {
+  color: #999;
+  font-size: 28rpx;
+}
+
+/* 底部安全区 */
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Flex 工具类 */
+.flex { display: flex; }
+.flex-col { display: flex; flex-direction: column; }
+.flex-center { display: flex; align-items: center; justify-content: center; }
+.flex-between { display: flex; align-items: center; justify-content: space-between; }
+.flex-start { display: flex; align-items: center; }
+.flex-1 { flex: 1; }

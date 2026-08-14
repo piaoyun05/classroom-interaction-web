@@ -1,0 +1,53 @@
+<view class="page" wx:if="{{publish}}">
+  <view class="detail-card">
+    <!-- 分类标签 -->
+    <view class="detail-tags">
+      <view class="tag {{publish.category === 'notice' ? 'tag-notice' : publish.category === 'knowledge' ? 'tag-knowledge' : publish.category === 'homework' ? 'tag-homework' : 'tag-keypoint'}}">
+        {{categoryLabel}}
+      </view>
+      <view wx:if="{{publish.isTop}}" class="top-badge">置顶</view>
+    </view>
+
+    <!-- 标题 -->
+    <view class="detail-title">{{publish.title}}</view>
+
+    <!-- 作者信息 -->
+    <view class="detail-meta">
+      <view class="meta-avatar">{{publish.author[0]}}</view>
+      <view class="meta-info">
+        <view class="meta-author">{{publish.author}}</view>
+        <view class="meta-time">{{publish.timeText}} · {{publish.views}}人查看</view>
+      </view>
+    </view>
+
+    <!-- AI摘要 -->
+    <view class="ai-summary-box">
+      <view class="ai-summary-header">
+        <view class="ai-badge-mini">AI</view>
+        <text class="ai-summary-label">AI内容摘要</text>
+      </view>
+      <view class="ai-summary-text">{{publish.summary}}</view>
+    </view>
+
+    <!-- 正文内容 -->
+    <view class="detail-content">{{publish.content}}</view>
+
+    <!-- 附件 -->
+    <view wx:if="{{publish.attachments}}" class="attachments">
+      <view class="attachment-title">附件：</view>
+      <view wx:for="{{publish.attachments}}" wx:key="name" class="attachment-item" bindtap="previewAttachment">
+        <view class="attachment-icon">📎</view>
+        <view class="attachment-info">
+          <view class="attachment-name">{{item.name}}</view>
+          <view class="attachment-size">{{item.size}}</view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 截止时间 -->
+    <view wx:if="{{publish.deadline}}" class="deadline-box">
+      <text class="deadline-icon">⏰</text>
+      <text>截止时间：{{publish.timeText}}</text>
+    </view>
+  </view>
+</view>

@@ -1,1 +1,14 @@
-{"courses":{},"data":{}}
+{
+  "courses": {
+    "__live_test_1786684558121__": {
+      "id": "__live_test_1786684558121__",
+      "name": "在线测试课程",
+      "className": "测试班",
+      "semester": "2026",
+      "teacherName": "测试老师",
+      "intro": "验证用",
+      "createdAt": 1786684558123
+    }
+  },
+  "data": {}
+}

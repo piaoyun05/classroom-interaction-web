@@ -26,6 +26,9 @@
     aiAnswerEnabled: true
   }
 
+  // 教师切到学生视角时暂存的数据，切回教师视角时恢复
+  var studentDataCache = null
+
   var state = {
     publishes: [],
     messages: [],
@@ -1216,20 +1219,12 @@
   function applyStudentData(course, shared) {
     state.course = course
     state.user = { name: '同学', role: 'student' }
-    var mock = global.MockData
-    if (shared && shared.publishes && shared.publishes.length) {
-      // 云端真实课程数据
-      state.publishes = shared.publishes
-      state.messages = shared.messages || []
-      state.discussions = shared.discussions || []
-      if (shared.config) state.config = Object.assign({}, DEFAULT_CONFIG, shared.config)
-    } else {
-      // 离线/后端未配置：用示例数据填充以便浏览
-      state.publishes = JSON.parse(JSON.stringify(mock.publishes))
-      state.messages = JSON.parse(JSON.stringify(mock.messages))
-      state.discussions = JSON.parse(JSON.stringify(mock.discussions))
-    }
-    state.dailyDiscussion = JSON.parse(JSON.stringify(mock.dailyDiscussion))
+    // 学生视角只显示云端真实数据；云端无数据时保持空白（不显示示例/原课程数据）
+    state.publishes = (shared && shared.publishes) ? shared.publishes : []
+    state.messages = (shared && shared.messages) ? shared.messages : []
+    state.discussions = (shared && shared.discussions) ? shared.discussions : []
+    if (shared && shared.config) state.config = Object.assign({}, DEFAULT_CONFIG, shared.config)
+    state.dailyDiscussion = {}
     state.aiHistory = []
     saveState()
     Util.showToast('已加入「' + course.name + '」', 'success')
@@ -1798,6 +1793,34 @@
     var newName = state.user.name || '同学'
     if (!isT && state.course && state.course.teacherName) newName = state.course.teacherName
     state.user = { name: newName, role: newRole }
+    if (newRole === 'student') {
+      // 切到学生视角：暂存教师数据，学生视角显示空白（不显示原课程数据）
+      studentDataCache = {
+        publishes: state.publishes,
+        messages: state.messages,
+        discussions: state.discussions,
+        weeklyReport: state.weeklyReport,
+        dailyReport: state.dailyReport,
+        aiHistory: state.aiHistory,
+        config: state.config
+      }
+      state.publishes = []
+      state.messages = []
+      state.discussions = []
+      state.weeklyReport = {}
+      state.dailyReport = {}
+      state.aiHistory = []
+    } else if (studentDataCache) {
+      // 切回教师视角：恢复教师数据
+      state.publishes = studentDataCache.publishes
+      state.messages = studentDataCache.messages
+      state.discussions = studentDataCache.discussions
+      state.weeklyReport = studentDataCache.weeklyReport
+      state.dailyReport = studentDataCache.dailyReport
+      state.aiHistory = studentDataCache.aiHistory
+      state.config = studentDataCache.config
+      studentDataCache = null
+    }
     saveState()
     Util.showToast('已切换为' + (newRole === 'teacher' ? '教师视角' : '学生视角'), 'success')
     renderApp()

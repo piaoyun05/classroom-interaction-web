@@ -111,18 +111,18 @@
     renderApp()
   }
 
-  // ========== 课程信息 PDF 导出 ==========
-  var EXPORT_CSS = 'body{font-family:"Microsoft YaHei","PingFang SC",sans-serif;padding:28px;color:#333;line-height:1.6}' +
-    'h1{font-size:22px;border-bottom:2px solid #4a7cff;padding-bottom:8px;margin-bottom:6px}' +
-    'h2{font-size:16px;color:#4a7cff;margin:22px 0 8px;border-left:4px solid #4a7cff;padding-left:8px}' +
-    '.meta{color:#888;font-size:12px;margin:2px 0}' +
-    '.item{margin:8px 0;padding:10px;border:1px solid #e5e7eb;border-radius:6px;page-break-inside:avoid}' +
-    '.item .t{font-weight:bold}' +
-    '.item .m{color:#888;font-size:12px;margin:2px 0}' +
-    '.item .c{margin-top:4px;white-space:pre-wrap;font-size:13px}' +
-    '.tag{display:inline-block;background:#eef2ff;color:#4a7cff;font-size:11px;border-radius:4px;padding:1px 6px;margin-right:4px}'
+  // ========== 课程信息 PDF 导出（在当前窗口渲染，完全避免弹窗拦截） ==========
+  var EXPORT_CSS = '.export-content{font-family:"Microsoft YaHei","PingFang SC",sans-serif;padding:28px;color:#333;line-height:1.6}' +
+    '.export-content h1{font-size:22px;border-bottom:2px solid #4a7cff;padding-bottom:8px;margin-bottom:6px}' +
+    '.export-content h2{font-size:16px;color:#4a7cff;margin:22px 0 8px;border-left:4px solid #4a7cff;padding-left:8px}' +
+    '.export-content .meta{color:#888;font-size:12px;margin:2px 0}' +
+    '.export-content .item{margin:8px 0;padding:10px;border:1px solid #e5e7eb;border-radius:6px;page-break-inside:avoid}' +
+    '.export-content .item .t{font-weight:bold}' +
+    '.export-content .item .m{color:#888;font-size:12px;margin:2px 0}' +
+    '.export-content .item .c{margin-top:4px;white-space:pre-wrap;font-size:13px}' +
+    '.export-content .tag{display:inline-block;background:#eef2ff;color:#4a7cff;font-size:11px;border-radius:4px;padding:1px 6px;margin-right:4px}'
 
-  function buildCourseExportHtml(withReset) {
+  function buildExportBodyHTML() {
     var c = state.course || {}
     var esc = Util.escapeHtml
     var fmt = function (t) { return t ? Util.formatDate(t) : '' }
@@ -178,29 +178,32 @@
       '<p>讨论区发言权限：' + (cfg.discussionPostEnabled ? '开启' : '关闭') + '</p>' +
       '<p>AI 答疑开关：' + (cfg.aiAnswerEnabled ? '开启' : '关闭') + '</p></div>')
 
-    var body = parts.join('')
-    var resetFooter = withReset
-      ? '<div style="margin-top:24px;padding:14px;border:1px dashed #e11d48;background:#fff5f5;border-radius:8px">' +
-        '📋 已为你打开打印对话框，请选择「另存为 PDF」保存本课程信息；' +
-        '确认导出完成后，点击下方按钮重置课程：<br/><br/>' +
-        '<button onclick="try{window.opener.doResetCourse();window.close()}catch(e){}" ' +
-        'style="padding:10px 20px;background:#e11d48;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:14px">✅ 已导出，确认重置课程</button>' +
-        '</div>'
-      : ''
-    return '<!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8"/><title>' + esc(c.name || '课程信息') + ' - 课程导出</title>' +
-      '<style>' + EXPORT_CSS + '</style></head><body>' + body + resetFooter +
-      '<script>setTimeout(function(){window.print()}, 500)</script></body></html>'
+    return parts.join('')
   }
 
-  // 打开导出PDF打印窗口；withReset=true 时打印完成后会回调重置课程
+  // 在当前窗口渲染导出页面（顶部工具栏：打印/确认重置/关闭），完全避开弹窗拦截
   function exportCoursePdf(withReset) {
-    var html = buildCourseExportHtml(!!withReset)
-    var w = window.open('', '_blank')
-    if (!w) { Util.showToast('浏览器拦截了弹出窗口，请允许后再试'); return }
-    w.document.write(html)
-    w.document.close()
-    w.focus()
-    Util.showToast('已生成课程导出，请在打印窗口另存为PDF', 'success')
+    var app = document.getElementById('app')
+    var header = document.querySelector('.header')
+    var tabbar = document.querySelector('.tabbar')
+    // 隐藏主界面头部与底部 Tab，避免打印时混入
+    if (header) header.style.display = 'none'
+    if (tabbar) tabbar.style.display = 'none'
+
+    var resetBtn = withReset
+      ? '<button data-action="confirm-reset-export" style="padding:10px 18px;background:#e11d48;color:#fff;border:none;border-radius:6px;cursor:pointer;margin-left:8px;font-size:14px">✅ 已导出，确认重置课程</button>'
+      : ''
+
+    app.innerHTML = '<style>' + EXPORT_CSS + '</style>' +
+      '<div style="background:#fff;min-height:100vh;padding:0 0 40px">' +
+      '<div style="position:sticky;top:0;z-index:50;background:#fff;padding:14px 18px;border-bottom:1px solid #eee;display:flex;align-items:center;gap:8px;box-shadow:0 2px 8px rgba(0,0,0,0.06)">' +
+      '<button data-action="do-print" style="padding:10px 20px;background:#4a7cff;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:14px">🖨️ 打印 / 另存为PDF</button>' +
+      resetBtn +
+      '<button data-action="close-export" style="margin-left:auto;padding:10px 16px;background:#f3f4f6;border:none;border-radius:6px;cursor:pointer">关闭返回</button>' +
+      '</div>' +
+      '<div class="export-content">' + buildExportBodyHTML() + '</div>' +
+      '</div>'
+    window.scrollTo(0, 0)
   }
 
   // ========== 云端同步（GitHub Gist） ==========
@@ -1883,6 +1886,9 @@
       case 'reset-data': resetData(); break
       case 'confirm-reset-data': confirmResetData(); break
       case 'export-course': exportCoursePdf(false); break
+      case 'do-print': window.print(); break
+      case 'close-export': renderApp(); break
+      case 'confirm-reset-export': doResetCourse(); renderApp(); break
       case 'close-modal': hideModal(); break
     }
   }
@@ -1933,9 +1939,6 @@
       startBackendSync()
     }
   }
-
-  // 暴露给「导出PDF」打印窗口，打印完成后回调重置课程
-  global.doResetCourse = doResetCourse
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init)

@@ -7,7 +7,6 @@
 // ============================================================
 window.APP_CONFIG = {
   CLOUDBASE_ENV: 'aiclass-d7ghnvfp4262bca32',
-  // 环境所在区域（上海 ap-shanghai / 广州 ap-guangzhou / 香港 ap-hongkong），
-  // 默认上海；若你的环境不在上海，请填入对应区域，否则 SDK 会初始化失败。
-  CLOUDBASE_REGION: ''
+  // 环境所在区域（上海 ap-shanghai / 广州 ap-guangzhou / 香港 ap-hongkong）
+  CLOUDBASE_REGION: 'ap-shanghai'
 }

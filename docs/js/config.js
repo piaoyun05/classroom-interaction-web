@@ -1,12 +1,17 @@
 // ============================================================
-// 应用配置 —— 云端同步（腾讯云开发 CloudBase）
-// 已配置 CloudBase 环境（匿名登录 + 数据库公开读写）。
-// 数据存储在集合 courses 中，每个课程一条文档。
+// 应用配置 —— 云端同步
+// 当前为「纯本地演示」模式，零配置即可使用：学生扫码后看到
+// 课程示例，发帖/留言仅保存在各自设备的浏览器中，不跨设备同步。
 //
-// 说明：CLOUDBASE_ENV 仅是环境标识，不是密钥，可公开嵌入网页。
+// 如需开启跨设备同步，后端已支持两种方案（任选其一）：
+//   ① 腾讯云开发 CloudBase：在 docs/js/backend.js 中实现并测试通过，
+//     把下面 CLOUDBASE_ENV 填入你的环境 ID（需在控制台「身份认证 v2」
+//     中开启「匿名登录」——注意是 v2 不是 v1，否则 SDK 连不上）。
+//   ② 其他公开 BaaS（如 LeanCloud）：按 backend.js 接口接入即可。
+//
+// 说明：CLOUDBASE_ENV 不是密钥，可公开嵌入网页。
 // ============================================================
 window.APP_CONFIG = {
-  CLOUDBASE_ENV: 'aiclass-d7ghnvfp4262bca32',
-  // 环境所在区域（上海 ap-shanghai / 广州 ap-guangzhou / 香港 ap-hongkong）
-  CLOUDBASE_REGION: 'ap-shanghai'
+  CLOUDBASE_ENV: '',
+  CLOUDBASE_REGION: ''
 }

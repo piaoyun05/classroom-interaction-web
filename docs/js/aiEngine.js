@@ -86,11 +86,44 @@
       return !m.replied
     }).length
 
-    var topIssues = [
-      { rank: 1, question: '第三章定理的证明过程不太理解', count: 8, type: 'knowledge' },
-      { rank: 2, question: '作业第3题的解题思路', count: 6, type: 'homework' },
-      { rank: 3, question: '课堂节奏偏快，希望多讲例题', count: 4, type: 'suggest' }
-    ]
+    // 基于真实留言内容做关键词统计，而非纯硬编码
+    var issueKeywords = {
+      knowledge: ['定义', '定理', '证明', '理解', '概念', '公式'],
+      homework: ['作业', '第', '题', '算', '答案'],
+      suggest: ['节奏', '讲', '建议', '课堂', '练习']
+    }
+    var counts = {}
+    messages.forEach(function (m) {
+      var c = m.content || ''
+      for (var type in issueKeywords) {
+        if (issueKeywords.hasOwnProperty(type)) {
+          issueKeywords[type].forEach(function (kw) {
+            if (c.indexOf(kw) !== -1) {
+              var key = type + '_' + kw
+              counts[key] = (counts[key] || 0) + 1
+            }
+          })
+        }
+      }
+    })
+
+    var topRaw = Object.keys(counts).sort(function (a, b) { return counts[b] - counts[a] }).slice(0, 5)
+    var topIssues = topRaw.map(function (key, i) {
+      var parts = key.split('_')
+      return {
+        rank: i + 1,
+        question: parts[1],
+        count: counts[key],
+        type: parts[0]
+      }
+    })
+    if (!topIssues.length) {
+      topIssues = [
+        { rank: 1, question: '第三章定理的证明过程不太理解', count: 8, type: 'knowledge' },
+        { rank: 2, question: '作业第3题的解题思路', count: 6, type: 'homework' },
+        { rank: 3, question: '课堂节奏偏快，希望多讲例题', count: 4, type: 'suggest' }
+      ]
+    }
 
     return {
       total: total,
@@ -101,7 +134,44 @@
     }
   }
 
-  // AI 讨论区整理
+  // AI 违规内容过滤（对应需求 2.2.3）
+  async function aiFilterContent(content) {
+    await Util.delay(400)
+    var keywords = Util.VIOLATION_KEYWORDS
+    var hits = keywords.filter(function (k) {
+      return (content || '').indexOf(k) !== -1
+    })
+    return {
+      pass: hits.length === 0,
+      hits: hits,
+      reason: hits.length ? '检测到敏感词：' + hits.join('、') + '，请修改后重试' : ''
+    }
+  }
+
+  // AI 每日讨论总结（对应需求 2.2.3）
+  async function aiDailyDiscussionSummary(discussions) {
+    await Util.delay(800)
+    var today = discussions.filter(function (d) {
+      return Date.now() - d.createTime < 24 * 60 * 60 * 1000
+    })
+    var list = today.length ? today : discussions.slice(0, 4)
+    var keyPoints = list.map(function (d) { return d.title }).slice(0, 3)
+    var commonDoubts = list.filter(function (d) {
+      return d.category === 'question' || d.category === 'exercise'
+    }).map(function (d) { return d.title }).slice(0, 3)
+    if (!commonDoubts.length) commonDoubts = ['极限的ε-δ定义', '两个重要极限', '等价无穷小替换']
+    var qualityViews = list.filter(function (d) { return d.likes > 3 }).map(function (d) { return d.title }).slice(0, 3)
+    if (!qualityViews.length) qualityViews = ['用打靶比喻理解ε-δ关系', '复利视角理解重要极限']
+
+    return {
+      period: Util.formatDate(new Date()),
+      keyPoints: keyPoints,
+      commonDoubts: commonDoubts,
+      qualityViews: qualityViews
+    }
+  }
+
+  // AI 讨论区整理（归档 + 折叠重复 + 置顶高频）
   async function aiOrganizeDiscussion(posts) {
     await Util.delay(700)
 
@@ -116,8 +186,22 @@
       if (categories[p.category]) categories[p.category].push(p)
     })
 
+    // 折叠重复内容：同分类且标题前6字相同视为重复
+    var folded = 0
+    var seen = {}
+    posts.forEach(function (p) {
+      var sig = (p.category || '') + '|' + (p.title || '').substring(0, 6)
+      if (seen[sig]) {
+        p.folded = true
+        folded++
+      } else {
+        seen[sig] = true
+      }
+    })
+
     return {
       categories: categories,
+      folded: folded,
       todayHighlight: '今日讨论热点集中在"极限的ε-δ定义"相关题目，同学们对定义的理解存在共性疑惑，建议教师课堂重点讲解。',
       qualityPosts: posts.filter(function (p) {
         return p.likes > 3
@@ -125,32 +209,134 @@
     }
   }
 
-  // AI 周期总结
-  async function aiWeeklySummary(publishes, messages, discussions) {
+  // AI 周期总结（日报 + 周报，对应需求 2.2.1）
+  async function aiWeeklySummary(publishes, messages, discussions, type) {
     await Util.delay(1000)
+    var isDaily = type === 'daily'
+    var period = isDaily ? '今日' : '本周'
 
     return {
-      period: '本周',
+      period: period,
+      type: type || 'weekly',
       publishCount: publishes.length,
       messageCount: messages.length,
       discussionCount: discussions.length,
       highlights: [
-        '本周教师发布 ' + publishes.length + ' 条课程内容，涵盖知识点资料和作业任务',
+        period + '教师发布 ' + publishes.length + ' 条课程内容，涵盖知识点资料和作业任务',
         '学生留言反馈 ' + messages.length + ' 条，高频问题集中在第三章',
         '讨论区活跃，共 ' + discussions.length + ' 条讨论帖，AI解答 ' + Math.floor(discussions.length * 0.6) + ' 次'
       ],
-      suggestion: '建议下周课堂重点回顾第三章核心定理，并增加相关例题讲解。同时关注作业第3题的共性问题。'
+      suggestion: isDaily
+        ? '今日教学进展顺利，建议明日课堂重点回顾第三章核心定理，并关注作业共性问题。'
+        : '建议下周课堂重点回顾第三章核心定理，并增加相关例题讲解。同时关注作业第3题的共性问题。'
     }
+  }
+
+  // AI 未解决问题清单（对应需求 2.2.2）
+  async function aiUnsolvedList(messages) {
+    await Util.delay(500)
+    var unsolved = messages.filter(function (m) { return !m.replied })
+    return {
+      total: unsolved.length,
+      items: unsolved.map(function (m, i) {
+        return { rank: i + 1, type: m.type, question: m.content, time: Util.timeAgo(m.createTime) }
+      })
+    }
+  }
+
+  // AI 个性化学习梳理（对应需求 2.4）
+  async function aiPersonalStudy(userName, messages, discussions) {
+    await Util.delay(900)
+    var myMessages = messages.filter(function (m) {
+      return !m.isAnonymous && m.studentName === userName
+    })
+    var myPosts = discussions.filter(function (d) { return d.author === userName })
+
+    var weakPoints = ['极限的ε-δ定义', '两个重要极限的应用', '等价无穷小替换']
+    var suggestions = [
+      '建议重点复习极限的ε-δ定义及证明方法，可参考教师发布的《教学重点梳理》',
+      '完成第三章课后习题1-5题，重点关注等价无穷小替换的适用条件',
+      '课前预习第四章内容，提前理解导数定义'
+    ]
+    var myQuestions = myMessages.map(function (m) { return m.content }).slice(0, 3)
+    if (myQuestions.length) {
+      weakPoints[0] = '你对「' + myQuestions[0].substring(0, 18) + '」相关知识点掌握不够'
+    }
+
+    return {
+      userName: userName,
+      myMessageCount: myMessages.length,
+      myPostCount: myPosts.length,
+      weakPoints: weakPoints,
+      suggestions: suggestions,
+      studyPlan: '每日建议学习 60 分钟：概念复习 20 分钟 + 例题练习 30 分钟 + 错题回顾 10 分钟'
+    }
+  }
+
+  // AI 一键总结中心（对应需求 2.4 内容智能总结）
+  async function aiQuickSummary(type, publishes, messages, discussions) {
+    await Util.delay(800)
+    var result = { type: type }
+    if (type === 'today') {
+      result.title = '今日课堂重点'
+      result.items = [
+        '今日教学主题：第三章「极限与连续」核心内容',
+        '重点讲解：极限的ε-δ定义与两个重要极限',
+        '布置作业：课后习题1-10题，截止本周五',
+        '今日讨论热点：' + discussions[0].title
+      ]
+      result.suggestion = '建议今日课后复习ε-δ定义，并完成前3题作业巩固。'
+    } else if (type === 'week') {
+      result.title = '本周学习内容'
+      result.items = [
+        '发布内容 ' + publishes.length + ' 条：含教学重点、作业、通知',
+        '收到留言 ' + messages.length + ' 条，已回复 ' + messages.filter(function (m) { return m.replied }).length + ' 条',
+        '讨论区共 ' + discussions.length + ' 个帖子，AI已解答 ' + discussions.filter(function (d) { return d.aiAnswer }).length + ' 个'
+      ]
+      result.suggestion = '本周知识密度较高，建议周末系统梳理第三章知识框架。'
+    } else if (type === 'unsolved') {
+      var unsolved = await aiUnsolvedList(messages)
+      result.title = '未解决问题清单'
+      result.items = unsolved.items.map(function (i) {
+        return i.rank + '. ' + i.question + '（' + i.time + '）'
+      })
+      if (!unsolved.items.length) result.items = ['暂无未解决问题 🎉']
+      result.suggestion = '建议尽快回复学生留言，提升学习体验。'
+    } else if (type === 'errors') {
+      result.title = '高频错题知识点'
+      result.items = [
+        '1. 极限的ε-δ定义证明（高频出错）',
+        '2. 等价无穷小替换的加减法误用（高频出错）',
+        '3. 夹逼准则与单调有界准则的选择'
+      ]
+      result.suggestion = '建议针对以上知识点增加专题讲解与专项练习。'
+    }
+    return result
   }
 
   // AI 全局问答
   async function aiGlobalQA(question, courseData) {
     await Util.delay(1000)
+    var course = courseData.course || {}
+    var courseName = course.name || '本课程'
+
+    var q = question || ''
+    var answer = ''
+    if (q.indexOf('ε-δ') !== -1 || q.indexOf('极限') !== -1 && q.indexOf('定义') !== -1) {
+      answer = '关于极限的ε-δ定义，可以从以下角度理解：\n\n1. 直观含义：当自变量x无限接近x₀时，函数值f(x)无限接近某个常数L\n2. 严格定义：对任意给定的ε>0，总存在δ>0，使得当0<|x-x₀|<δ时，恒有|f(x)-L|<ε\n3. 理解技巧：ε代表允许的误差范围，δ代表自变量的活动范围——"对任意误差，都能找到合适的范围"'
+    } else if (q.indexOf('连续') !== -1) {
+      answer = '判断函数连续性：\n\n1. 函数在x₀处有定义\n2. 极限lim(x→x₀) f(x)存在\n3. 极限值等于函数值f(x₀)\n\n三个条件缺一不可。可导必连续，但连续不一定可导（如y=|x|在x=0处）。'
+    } else if (q.indexOf('导数') !== -1 || q.indexOf('微分') !== -1) {
+      answer = '导数的本质是函数在该点的瞬时变化率：\n\nf\'(x₀) = lim(Δx→0) [f(x₀+Δx)-f(x₀)]/Δx\n\n几何意义是曲线在该点的切线斜率。微分是函数增量的线性主部，dy = f\'(x)dx。'
+    } else {
+      answer = '根据本课程的专属知识库，为您解答如下：\n\n结合' + courseName + '的课程资料与同学们的讨论记录，这个问题可以从以下角度理解：\n\n1. 基础概念层面：回顾课本对应章节的定义和性质\n2. 实际应用层面：参考教师发布的知识点资料中的例题\n3. 常见误区：注意同学们在讨论区提到的易错点\n\n建议结合课堂笔记和教师发布的教学重点内容进行综合理解。'
+    }
 
     return {
-      answer: '根据本课程的知识库内容，为您解答如下：\n\n' + question + '是一个很好的问题。结合教师发布的课程资料和同学们的讨论记录，这个问题可以从以下几个角度理解：\n\n1. 基础概念层面：回顾课本对应章节的定义和性质\n2. 实际应用层面：参考教师发布的知识点资料中的例题\n3. 常见误区：注意同学们在讨论区提到的易错点\n\n建议结合课堂笔记第2章和教师发布的"教学重点"内容进行综合理解。',
+      answer: answer,
+      courseName: courseName,
       sources: [
-        { type: '教师发布', title: '第三章 教学重点梳理' },
+        { type: '教师发布', title: courseName + ' 教学重点梳理' },
         { type: '讨论区', title: '关于极限定义的讨论帖' },
         { type: 'AI答疑', title: '作业第3题AI解答' }
       ],
@@ -169,6 +355,11 @@
     aiSummarizeMessages: aiSummarizeMessages,
     aiOrganizeDiscussion: aiOrganizeDiscussion,
     aiWeeklySummary: aiWeeklySummary,
-    aiGlobalQA: aiGlobalQA
+    aiGlobalQA: aiGlobalQA,
+    aiFilterContent: aiFilterContent,
+    aiDailyDiscussionSummary: aiDailyDiscussionSummary,
+    aiUnsolvedList: aiUnsolvedList,
+    aiPersonalStudy: aiPersonalStudy,
+    aiQuickSummary: aiQuickSummary
   }
 })(window)

@@ -5,6 +5,39 @@
   var now = Date.now()
   var day = 24 * 60 * 60 * 1000
 
+  // 课程基本信息（由教师创建，对应需求 2.1）
+  var course = {
+    id: 'course_math_3',
+    name: '高等数学',
+    className: '计科2401班',
+    semester: '2025-2026学年第二学期',
+    intro: '本课程涵盖极限与连续、导数与微分、积分学基础等内容，重点培养学生的数学思维与计算能力。',
+    teacherName: '张教授',
+    teacherRole: 'teacher',
+    createdAt: now - 8 * day
+  }
+
+  // 教师基础配置（对应需求 2.1 基础配置）
+  var config = {
+    pageStyle: 'default',          // 页面展示样式
+    messageReviewEnabled: false,   // 留言审核开关
+    discussionPostEnabled: true,   // 讨论区发言权限
+    aiAnswerEnabled: true          // AI 答疑开启/关闭
+  }
+
+  // 每日讨论总结（对应需求 2.2.3 AI周期总结）
+  function fmtShort(t) {
+    var d = new Date(t)
+    function p(n) { return n < 10 ? '0' + n : '' + n }
+    return p(d.getMonth() + 1) + '-' + p(d.getDate())
+  }
+  var dailyDiscussion = {
+    date: fmtShort(now),
+    keyPoints: ['极限的ε-δ定义', '两个重要极限', '等价无穷小替换'],
+    commonDoubts: ['ε-δ定义的应用证明', '夹逼准则使用场景'],
+    qualityViews: ['用打靶比喻理解ε-δ关系', '复利视角理解重要极限']
+  }
+
   // 教师发布内容
   var publishes = [
     {
@@ -235,6 +268,9 @@
   }
 
   global.MockData = {
+    course: course,
+    config: config,
+    dailyDiscussion: dailyDiscussion,
     publishes: publishes,
     messages: messages,
     discussions: discussions,

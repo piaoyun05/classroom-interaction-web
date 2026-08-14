@@ -1,4 +1,5 @@
 // 网页版主应用 - hash 路由 + 页面渲染 + 交互
+// 完整实现方案需求：课程创建/权限/配置 + 三大板块 + AI解答 + 全局AI问答
 (function (global) {
   'use strict'
 
@@ -12,7 +13,17 @@
     discussions: 'web_discussions',
     weeklyReport: 'web_weekly_report',
     aiHistory: 'web_ai_history',
-    user: 'web_user'
+    user: 'web_user',
+    course: 'web_course',
+    config: 'web_config',
+    dailyReport: 'web_daily_report'
+  }
+
+  var DEFAULT_CONFIG = {
+    pageStyle: 'default',
+    messageReviewEnabled: false,
+    discussionPostEnabled: true,
+    aiAnswerEnabled: true
   }
 
   var state = {
@@ -20,8 +31,11 @@
     messages: [],
     discussions: [],
     weeklyReport: {},
+    dailyReport: {},
     aiHistory: [],
-    user: { name: '小明同学', role: 'student' }
+    user: { name: '小明同学', role: 'student' },
+    course: null,
+    config: JSON.parse(JSON.stringify(DEFAULT_CONFIG))
   }
 
   function loadState() {
@@ -30,8 +44,11 @@
     state.messages = Util.storage.get(STORAGE_KEYS.messages, mock.messages)
     state.discussions = Util.storage.get(STORAGE_KEYS.discussions, mock.discussions)
     state.weeklyReport = Util.storage.get(STORAGE_KEYS.weeklyReport, mock.weeklyReport)
+    state.dailyReport = Util.storage.get(STORAGE_KEYS.dailyReport, {})
     state.aiHistory = Util.storage.get(STORAGE_KEYS.aiHistory, [])
     state.user = Util.storage.get(STORAGE_KEYS.user, { name: '小明同学', role: 'student' })
+    state.course = Util.storage.get(STORAGE_KEYS.course, null)
+    state.config = Object.assign({}, DEFAULT_CONFIG, Util.storage.get(STORAGE_KEYS.config, {}))
   }
 
   function saveState() {
@@ -39,8 +56,11 @@
     Util.storage.set(STORAGE_KEYS.messages, state.messages)
     Util.storage.set(STORAGE_KEYS.discussions, state.discussions)
     Util.storage.set(STORAGE_KEYS.weeklyReport, state.weeklyReport)
+    Util.storage.set(STORAGE_KEYS.dailyReport, state.dailyReport)
     Util.storage.set(STORAGE_KEYS.aiHistory, state.aiHistory)
     Util.storage.set(STORAGE_KEYS.user, state.user)
+    Util.storage.set(STORAGE_KEYS.course, state.course)
+    Util.storage.set(STORAGE_KEYS.config, state.config)
   }
 
   function resetData() {
@@ -49,9 +69,16 @@
     state.messages = JSON.parse(JSON.stringify(mock.messages))
     state.discussions = JSON.parse(JSON.stringify(mock.discussions))
     state.weeklyReport = JSON.parse(JSON.stringify(mock.weeklyReport))
+    state.dailyReport = {}
     state.aiHistory = []
+    state.course = null
+    state.config = JSON.parse(JSON.stringify(DEFAULT_CONFIG))
     saveState()
     renderApp()
+  }
+
+  function isTeacher() {
+    return state.user.role === 'teacher'
   }
 
   // ========== 路由 ==========
@@ -73,8 +100,8 @@
   ]
 
   function activeTabKey(route) {
-    if (route.page === 'home' || route.page.indexOf('publish') === 0 || route.page.indexOf('message') === 0) return 'home'
-    if (route.page === 'discussion' || route.page.indexOf('discussion') === 0) return 'discussion'
+    if (route.page === 'home' || route.page.indexOf('publish') === 0 || route.page.indexOf('message') === 0 || route.page === 'createCourse' || route.page === 'teacherConfig' || route.page === 'aiSummary' || route.page === 'personalStudy') return 'home'
+    if (route.page === 'discussion' || route.page.indexOf('discussion') === 0 || route.page === 'review') return 'discussion'
     if (route.page === 'ai') return 'ai'
     if (route.page === 'profile') return 'profile'
     return 'home'
@@ -83,6 +110,8 @@
   // ========== 通用组件 ==========
   var PAGE_TITLES = {
     home: 'AI赋能课堂互动',
+    createCourse: '创建课程小程序',
+    teacherConfig: '教师基础配置',
     publish: '教师信息发布区',
     publishDetail: '内容详情',
     publishNew: '发布新内容',
@@ -92,7 +121,10 @@
     discussionDetail: '讨论详情',
     discussionNew: '发起讨论',
     ai: 'AI智能问答',
-    profile: '个人中心'
+    aiSummary: 'AI 内容总结',
+    personalStudy: '个性化学习梳理',
+    profile: '个人中心',
+    review: 'AI 答疑复核中心'
   }
 
   function getTitle(page) {
@@ -103,14 +135,19 @@
     var back = isTabPage(route.page) ? '' :
       '<div class="header-back" data-action="go-back">‹</div>'
     var extra = ''
-    if (route.page === 'publish' || route.page === 'message' || route.page === 'discussion') {
-      var publishBtn = ''
-      if (route.page === 'publish') publishBtn = '<div class="header-action" data-action="new-publish">＋ 发布</div>'
-      if (route.page === 'message') publishBtn = '<div class="header-action" data-action="new-message">＋ 留言</div>'
-      if (route.page === 'discussion') publishBtn = '<div class="header-action" data-action="new-discussion">＋ 发帖</div>'
-      extra = publishBtn
+    if (route.page === 'publish' && isTeacher()) {
+      extra = '<div class="header-action" data-action="new-publish">＋ 发布</div>'
     }
-    return '<header class="header">' + back + '<h1 class="header-title">' + getTitle(route.page) + '</h1>' + extra + '</header>'
+    if (route.page === 'message') {
+      extra = '<div class="header-action" data-action="new-message">＋ 留言</div>'
+    }
+    if (route.page === 'discussion') {
+      var canPost = isTeacher() || state.config.discussionPostEnabled
+      if (canPost) extra = '<div class="header-action" data-action="new-discussion">＋ 发帖</div>'
+    }
+    var title = getTitle(route.page)
+    if (route.page === 'home' && state.course) title = state.course.name
+    return '<header class="header">' + back + '<h1 class="header-title">' + title + '</h1>' + extra + '</header>'
   }
 
   function renderTabBar(route) {
@@ -133,33 +170,60 @@
     var tag = renderTag(Util.CATEGORY_MAP, p.category)
     var top = p.isTop ? '<span class="badge-top">置顶</span>' : ''
     var deadline = p.deadline ? '<div class="pub-deadline">⏰ 截止：' + Util.formatDate(p.deadline) + '</div>' : ''
+    var typeIcon = (Util.CONTENT_TYPE_MAP[p.type] || Util.CONTENT_TYPE_MAP.text).icon + ' '
     return '<div class="card pub-card" data-action="open-publish-detail" data-id="' + p.id + '">' +
       '<div class="card-top">' + tag + top + '<span class="card-time">' + Util.timeAgo(p.createTime) + '</span></div>' +
-      '<h3 class="card-title">' + Util.escapeHtml(p.title) + '</h3>' +
+      '<h3 class="card-title">' + typeIcon + Util.escapeHtml(p.title) + '</h3>' +
       '<p class="card-summary">' + Util.escapeHtml(p.summary || p.content) + '</p>' +
       '<div class="card-meta">' + deadline +
       '<span>👨‍🏫 ' + Util.escapeHtml(p.author) + '</span>' +
-      '<span>👁 ' + p.views + '</span></div></div>'
+      '<span>👁 ' + p.views + '</span>' +
+      (isTeacher() ? '<span class="pub-admin" data-action="toggle-publish-top" data-id="' + p.id + '">' + (p.isTop ? '取消置顶' : '置顶') + '</span>' +
+        '<span class="pub-admin pub-del" data-action="delete-publish" data-id="' + p.id + '">删除</span>' : '') +
+      '</div></div>'
   }
 
   function renderMessageCard(m) {
     var tag = renderTag(Util.MESSAGE_TYPE_MAP, m.type)
-    var replied = m.replied ?
-      '<div class="reply-box"><div class="reply-label">教师回复</div><div class="reply-text">' + Util.escapeHtml(m.reply) + '</div></div>' :
-      '<div class="reply-pending">⏳ 待教师回复</div>'
+    var status = ''
+    var reviewBtns = ''
+    if (m.status === 'pending') {
+      status = '<span class="msg-pending">⏳ 待审核</span>'
+      if (isTeacher()) {
+        reviewBtns = '<div class="reply-actions"><button class="btn-reply btn-approve" data-action="approve-message" data-id="' + m.id + '">通过</button>' +
+          '<button class="btn-reject" data-action="reject-message" data-id="' + m.id + '">拒绝</button></div>'
+      }
+    } else if (m.status === 'rejected') {
+      status = '<span class="msg-rejected">🚫 未通过</span>'
+    }
+    var replied = ''
+    if (m.replied) {
+      replied = '<div class="reply-box"><div class="reply-label">教师回复</div><div class="reply-text">' + Util.escapeHtml(m.reply) + '</div></div>'
+    } else if (m.status !== 'rejected') {
+      replied = isTeacher()
+        ? '<div class="reply-actions"><span class="reply-pending">⏳ 待回复</span><button class="btn-reply" data-action="reply-message" data-id="' + m.id + '">回复</button></div>'
+        : '<div class="reply-pending">⏳ 待教师回复</div>'
+    }
+    var images = (m.images || []).map(function (img) {
+      return '<img class="msg-img" src="' + Util.escapeHtml(img) + '" alt="留言图片"/>'
+    }).join('')
     return '<div class="card msg-card">' +
-      '<div class="card-top">' + tag + '<span class="card-time">' + Util.timeAgo(m.createTime) + '</span></div>' +
+      '<div class="card-top">' + tag + status + '<span class="card-time">' + Util.timeAgo(m.createTime) + '</span></div>' +
       '<div class="msg-name">' + (m.isAnonymous ? '🕶 匿名同学' : Util.escapeHtml(m.studentName)) + '</div>' +
       '<p class="msg-content">' + Util.escapeHtml(m.content) + '</p>' +
+      images +
       replied +
+      reviewBtns +
       '</div>'
   }
 
   function renderDiscussionCard(d) {
     var tag = renderTag(Util.DISCUSSION_CATEGORY_MAP, d.category)
     var aiBadge = d.aiAnswer ? '<span class="badge-ai">🤖 已解答</span>' : ''
+    var hot = (d.aiAnswer && d.likes > 10) ? '<span class="badge-hot">🔥 高频</span>' : ''
+    var top = d.isTop ? '<span class="badge-top">置顶</span>' : ''
     return '<div class="card disc-card" data-action="open-discussion-detail" data-id="' + d.id + '">' +
-      '<div class="card-top">' + tag + aiBadge + '<span class="card-time">' + Util.timeAgo(d.createTime) + '</span></div>' +
+      '<div class="card-top">' + tag + top + aiBadge + hot + '<span class="card-time">' + Util.timeAgo(d.createTime) + '</span></div>' +
       '<h3 class="card-title">' + Util.escapeHtml(d.title) + '</h3>' +
       '<p class="card-summary">' + Util.escapeHtml(d.content) + '</p>' +
       '<div class="card-meta">' +
@@ -184,18 +248,76 @@
   }
 
   // ========== 页面渲染 ==========
+  function renderCreateCourse() {
+    return '<div class="page">' +
+      '<div class="course-create-hero">' +
+      '<div class="cc-icon">🎓</div>' +
+      '<div class="cc-title">创建你的专属课程小程序</div>' +
+      '<div class="cc-sub">本平台无通用首页，每位教师创建专属课程互动空间</div>' +
+      '</div>' +
+      '<div class="form-card card">' +
+      '<div class="form-label">课程名称 <span class="form-required">*</span></div>' +
+      '<input id="course-name" class="form-input" placeholder="如：高等数学" maxlength="20"/>' +
+      '<div class="form-label">授课班级 <span class="form-required">*</span></div>' +
+      '<input id="course-class" class="form-input" placeholder="如：计科2401班" maxlength="20"/>' +
+      '<div class="form-label">授课学期 <span class="form-required">*</span></div>' +
+      '<input id="course-semester" class="form-input" placeholder="如：2025-2026学年第二学期" maxlength="30"/>' +
+      '<div class="form-label">课程简介</div>' +
+      '<textarea id="course-intro" class="form-textarea" style="min-height:80px" placeholder="简要介绍课程内容与学习目标"></textarea>' +
+      '<div class="form-ai-hint">✨ 创建后你将拥有课程管理权限（发布/审核/置顶/配置）</div>' +
+      '<button class="btn-primary" data-action="create-course">创 建 课 程</button>' +
+      '<button class="btn-ghost" data-action="use-sample-course">使用示例课程快速体验</button>' +
+      '</div></div>'
+  }
+
+  function renderTeacherConfig() {
+    var cfg = state.config
+    return '<div class="page">' +
+      '<div class="form-card card">' +
+      '<div class="config-title">⚙️ 课程基础配置</div>' +
+      '<div class="config-sub">以下设置仅超级管理员可见</div>' +
+      '<div class="form-label">课程信息</div>' +
+      '<div class="config-info">' +
+      '<div>📚 ' + Util.escapeHtml(state.course.name) + '</div>' +
+      '<div>🏫 ' + Util.escapeHtml(state.course.className) + ' · ' + Util.escapeHtml(state.course.semester) + '</div>' +
+      '</div>' +
+      '<div class="form-label">页面展示样式</div>' +
+      '<div class="config-row">' +
+      '<button class="config-btn ' + (cfg.pageStyle === 'default' ? 'active' : '') + '" data-action="set-style" data-val="default">默认风格</button>' +
+      '<button class="config-btn ' + (cfg.pageStyle === 'compact' ? 'active' : '') + '" data-action="set-style" data-val="compact">紧凑风格</button>' +
+      '</div>' +
+      '<div class="config-switch-row">' +
+      '<div><div class="config-label">留言审核开关</div><div class="config-desc">开启后学生留言需教师审核通过才展示</div></div>' +
+      '<div class="switch ' + (cfg.messageReviewEnabled ? 'on' : '') + '" data-action="toggle-config" data-key="messageReviewEnabled"><div class="switch-knob"></div></div>' +
+      '</div>' +
+      '<div class="config-switch-row">' +
+      '<div><div class="config-label">讨论区发言权限</div><div class="config-desc">开启后学生可自由发帖讨论</div></div>' +
+      '<div class="switch ' + (cfg.discussionPostEnabled ? 'on' : '') + '" data-action="toggle-config" data-key="discussionPostEnabled"><div class="switch-knob"></div></div>' +
+      '</div>' +
+      '<div class="config-switch-row">' +
+      '<div><div class="config-label">AI 答疑开关</div><div class="config-desc">控制讨论区「AI一键解答」按钮是否可用</div></div>' +
+      '<div class="switch ' + (cfg.aiAnswerEnabled ? 'on' : '') + '" data-action="toggle-config" data-key="aiAnswerEnabled"><div class="switch-knob"></div></div>' +
+      '</div>' +
+      '</div></div>'
+  }
+
   function renderHome() {
-    var unrepliedCount = state.messages.filter(function (m) { return !m.replied }).length
+    if (!state.course) return renderCreateCourse()
+    var unrepliedCount = state.messages.filter(function (m) { return !m.replied && m.status !== 'rejected' }).length
     var aiDiscussed = state.discussions.filter(function (d) { return d.aiAnswer }).length
+    var teacherEntry = isTeacher()
+      ? '<div class="teacher-tools"><div class="teacher-tool" data-action="go-teacher-config">⚙️ 基础配置</div>' +
+        '<div class="teacher-tool" data-action="go-review">🛡️ 答疑复核</div>' +
+        '<div class="teacher-tool" data-action="open-daily">📅 AI 日报</div></div>'
+      : ''
     return '<div class="page home-page">' +
-      // 顶部问候
       '<div class="home-hero">' +
-      '<div class="hero-greet">早上好，' + Util.escapeHtml(state.user.name) + ' 👋</div>' +
-      '<div class="hero-sub">高等数学 · 第三章「极限与连续」</div>' +
+      '<div class="hero-greet">' + (isTeacher() ? '教师您好，' : '你好，') + Util.escapeHtml(state.user.name) + ' 👋</div>' +
+      '<div class="hero-sub">' + Util.escapeHtml(state.course.name) + ' · ' + Util.escapeHtml(state.course.className) +
+      ' · ' + Util.escapeHtml(state.course.semester) + '</div>' +
       '<div class="hero-ai" data-action="open-weekly"><span class="hero-ai-icon">✨</span> 查看本周 AI 教学周报</div>' +
       '</div>' +
-
-      // 三大板块
+      teacherEntry +
       '<div class="section-title">核心板块</div>' +
       '<div class="module-grid">' +
       '<div class="module-card" data-action="go-publish">' +
@@ -214,14 +336,23 @@
       '<div class="module-desc">' + state.discussions.length + ' 个帖子 · AI 一键解答</div>' +
       '</div>' +
       '</div>' +
-
-      // 最新动态
-      '<div class="section-title">最新动态</div>' +
-      '<div class="latest-list">' +
-      latestItems() +
+      '<div class="section-title">AI 智能服务</div>' +
+      '<div class="ai-service-grid">' +
+      '<div class="ai-service-card" data-action="go-ai">' +
+      '<div class="ai-service-icon">🤖</div><div class="ai-service-name">全局智能问答</div>' +
+      '<div class="ai-service-desc">基于课程知识库精准作答</div></div>' +
+      '<div class="ai-service-card" data-action="go-summary-today">' +
+      '<div class="ai-service-icon">📅</div><div class="ai-service-name">今日课堂重点</div>' +
+      '<div class="ai-service-desc">一键总结今日学习内容</div></div>' +
+      '<div class="ai-service-card" data-action="go-summary-errors">' +
+      '<div class="ai-service-icon">📌</div><div class="ai-service-name">高频错题知识点</div>' +
+      '<div class="ai-service-desc">梳理易错点与薄弱环节</div></div>' +
+      '<div class="ai-service-card" data-action="go-personal-study">' +
+      '<div class="ai-service-icon">🎯</div><div class="ai-service-name">个性化学习梳理</div>' +
+      '<div class="ai-service-desc">针对个人学习记录生成建议</div></div>' +
       '</div>' +
-
-      // AI 快速入口
+      '<div class="section-title">最新动态</div>' +
+      '<div class="latest-list">' + latestItems() + '</div>' +
       '<div class="ai-quick-entry" data-action="go-ai">' +
       '<div class="ai-quick-icon">🤖</div>' +
       '<div class="ai-quick-info">' +
@@ -271,6 +402,7 @@
       : '<div class="empty">暂无内容</div>'
 
     return '<div class="page">' +
+      '<div class="ai-org-bar">🤖 AI 已自动将发布内容分类为 通知 / 知识点 / 作业 / 重点</div>' +
       '<div class="filter-bar">' + tabHtml + '</div>' +
       '<div class="list-area">' + listHtml + '</div>' +
       '</div>'
@@ -282,6 +414,11 @@
     var attachments = (p.attachments || []).map(function (a) {
       return '<div class="attach-item">📎 ' + Util.escapeHtml(a.name) + ' <span class="attach-size">' + a.size + '</span></div>'
     }).join('')
+    var images = (p.images || []).map(function (img) {
+      return '<img class="detail-img" src="' + Util.escapeHtml(img) + '" alt="内容图片"/>'
+    }).join('')
+    var link = p.link ? '<div class="attach-item">🔗 <a href="' + Util.escapeHtml(p.link) + '" target="_blank" rel="noopener">' + Util.escapeHtml(p.linkTitle || p.link) + '</a></div>' : ''
+    var video = p.video ? '<div class="video-box"><div class="video-placeholder">🎬 ' + Util.escapeHtml(p.videoTitle || '课程视频') + '</div><div class="video-link">' + Util.escapeHtml(p.video) + '</div></div>' : ''
 
     return '<div class="page">' +
       '<div class="detail-card card">' +
@@ -290,8 +427,9 @@
       '<span class="card-time">' + Util.formatTime(p.createTime) + '</span></div>' +
       '<h2 class="detail-title">' + Util.escapeHtml(p.title) + '</h2>' +
       '<div class="detail-author">👨‍🏫 ' + Util.escapeHtml(p.author) + ' · 👁 ' + p.views + ' 次浏览</div>' +
-      (p.deadline ? '<div class="pub-deadline">⏰ 截止：' + Util.formatTime(p.deadline) + '</div>' : '') +
+      (p.deadline ? '<div class="pub-deadline">⏰ 截止查看：' + Util.formatTime(p.deadline) + '</div>' : '') +
       '<div class="detail-content">' + Util.nl2br(p.content) + '</div>' +
+      images + link + video +
       (attachments ? '<div class="attach-list">' + attachments + '</div>' : '') +
       '</div>' +
       (p.category === 'homework'
@@ -301,8 +439,42 @@
   }
 
   function renderPublishNew() {
+    var types = [
+      { key: 'text', label: '📝 文字' },
+      { key: 'image', label: '🖼️ 图片' },
+      { key: 'file', label: '📎 文件' },
+      { key: 'link', label: '🔗 链接' },
+      { key: 'video', label: '🎬 视频' }
+    ]
+    var typeHtml = types.map(function (t) {
+      return '<div class="form-tag ' + (formState.publishType === t.key ? 'active' : '') + '" data-action="pick-publish-type" data-key="' + t.key + '">' + t.label + '</div>'
+    }).join('')
+
+    var typeExtras = ''
+    if (formState.publishType === 'image') {
+      typeExtras = '<div class="form-label">图片地址</div>' +
+        '<input id="pub-image" class="form-input" placeholder="https://example.com/image.jpg"/>'
+    } else if (formState.publishType === 'file') {
+      typeExtras = '<div class="form-label">文件名</div>' +
+        '<input id="pub-file-name" class="form-input" placeholder="如：第三章课件.pdf"/>' +
+        '<div class="form-label">文件大小</div>' +
+        '<input id="pub-file-size" class="form-input" placeholder="如：2.3MB"/>'
+    } else if (formState.publishType === 'link') {
+      typeExtras = '<div class="form-label">链接地址 <span class="form-required">*</span></div>' +
+        '<input id="pub-link" class="form-input" placeholder="https://..."/>' +
+        '<div class="form-label">链接标题</div>' +
+        '<input id="pub-link-title" class="form-input" placeholder="链接显示名称"/>'
+    } else if (formState.publishType === 'video') {
+      typeExtras = '<div class="form-label">视频链接</div>' +
+        '<input id="pub-video" class="form-input" placeholder="https://..."/>' +
+        '<div class="form-label">视频标题</div>' +
+        '<input id="pub-video-title" class="form-input" placeholder="如：课堂讲解录像"/>'
+    }
+
     return '<div class="page form-page">' +
       '<div class="form-card card">' +
+      '<div class="form-label">发布格式 <span class="form-required">*</span></div>' +
+      '<div class="form-tags">' + typeHtml + '</div>' +
       '<div class="form-label">标题 <span class="form-required">*</span></div>' +
       '<input id="pub-title" class="form-input" placeholder="请输入标题" maxlength="50"/>' +
       '<div class="form-label">内容分类 <span class="form-required">*</span></div>' +
@@ -314,6 +486,13 @@
       '</div>' +
       '<div class="form-label">内容 <span class="form-required">*</span></div>' +
       '<textarea id="pub-content" class="form-textarea" placeholder="请输入详细内容"></textarea>' +
+      typeExtras +
+      '<div class="form-row">' +
+      '<div class="form-label" style="margin-top:0">置顶状态</div>' +
+      '<div class="switch ' + (formState.publishIsTop ? 'on' : '') + '" data-action="toggle-publish-top-new"><div class="switch-knob"></div></div>' +
+      '</div>' +
+      '<div class="form-label">截止查看时间（可选）</div>' +
+      '<input id="pub-deadline" class="form-input" type="date"/>' +
       '<div class="form-ai-hint">✨ AI 将自动为你生成摘要并归类</div>' +
       '<button class="btn-primary" data-action="submit-publish">发 布</button>' +
       '</div></div>'
@@ -324,24 +503,40 @@
     var summaryCard = ''
     if (summary) {
       summaryCard = '<div class="ai-summary-card">' +
-        '<div class="ai-summary-header"><span>🤖 AI 问题汇总</span><span class="ai-summary-close" data-action="close-ai-summary">✕</span></div>' +
+        '<div class="ai-summary-header"><span>🤖 AI 问题汇总表</span><span class="ai-summary-close" data-action="close-ai-summary">✕</span></div>' +
         '<div class="ai-summary-text">' + Util.escapeHtml(summary.summary) + '</div>' +
-        '<div class="ai-summary-stats">总 ' + summary.total + ' 条 · 待回复 ' + summary.unsolved + ' 条</div>' +
-        '<div class="ai-summary-top">高频问题：</div>' +
+        '<div class="ai-summary-stats">总 ' + summary.total + ' 条 · 未解决 ' + summary.unsolved + ' 条</div>' +
+        '<div class="ai-summary-top">📊 高频问题 TOP' + summary.topIssues.length + '：</div>' +
         summary.topIssues.map(function (t) {
           return '<div class="ai-summary-issue">' + t.rank + '. ' + Util.escapeHtml(t.question) + ' <span class="ai-count">×' + t.count + '</span></div>'
+        }).join('') +
+        '<div class="ai-summary-top" style="margin-top:8px">🕐 未解决问题清单：</div>' +
+        summary.unsolvedList.map(function (u) {
+          return '<div class="ai-summary-issue">· ' + Util.escapeHtml(u.question) + ' <span class="ai-count">' + Util.escapeHtml(u.time) + '</span></div>'
         }).join('') +
         '</div>'
     }
 
-    var listHtml = state.messages.length
-      ? state.messages.map(renderMessageCard).join('')
+    var list = state.messages.filter(function (m) {
+      // 未开启审核：全部显示；开启审核：学生只看已通过，教师看全部
+      if (!state.config.messageReviewEnabled) return m.status !== 'rejected'
+      if (isTeacher()) return true
+      return m.status !== 'pending' && m.status !== 'rejected'
+    })
+
+    var listHtml = list.length
+      ? list.map(renderMessageCard).join('')
       : '<div class="empty">暂无留言</div>'
 
+    var reviewTip = state.config.messageReviewEnabled && isTeacher()
+      ? '<div class="review-tip">🔔 留言审核已开启，共 ' + state.messages.filter(function (m) { return m.status === 'pending' }).length + ' 条待审核</div>'
+      : ''
+
     return '<div class="page">' +
+      reviewTip +
       '<div class="ai-summary-entry" data-action="ai-message-summary">' +
       '<span class="ai-entry-icon">🤖</span>' +
-      '<div class="ai-entry-body"><div class="ai-entry-title">AI 问题汇总</div>' +
+      '<div class="ai-entry-body"><div class="ai-entry-title">AI 问题汇总表</div>' +
       '<div class="ai-entry-desc">智能梳理 ' + state.messages.length + ' 条留言，' + unrepliedCountNow() + ' 条待回复</div></div>' +
       '<span class="ai-entry-arrow">›</span>' +
       '</div>' +
@@ -351,7 +546,7 @@
   }
 
   function unrepliedCountNow() {
-    return state.messages.filter(function (m) { return !m.replied }).length
+    return state.messages.filter(function (m) { return !m.replied && m.status !== 'rejected' }).length
   }
 
   function renderMessageNew() {
@@ -366,9 +561,12 @@
       '</div>' +
       '<div class="form-label">留言内容 <span class="form-required">*</span></div>' +
       '<textarea id="msg-content" class="form-textarea" placeholder="请描述你的问题或建议"></textarea>' +
+      '<div class="form-label">图片（可选，最多1张）</div>' +
+      '<input id="msg-image" class="form-input" placeholder="https://example.com/image.jpg"/>' +
       '<div class="form-anon">' +
       '<label class="anon-label"><input type="checkbox" id="msg-anon"/> 匿名留言（仅教师可见你的信息）</label>' +
       '</div>' +
+      (state.config.messageReviewEnabled ? '<div class="form-ai-hint">🔔 留言将先经教师审核后展示</div>' : '') +
       '<button class="btn-primary" data-action="submit-message">提 交 留 言</button>' +
       '</div></div>'
   }
@@ -390,13 +588,21 @@
     }).join('')
 
     var aiHot = state.discussions.filter(function (d) { return d.aiAnswer }).length
+    var folded = state.discussions.filter(function (d) { return d.folded }).length
 
     var listHtml = list.length
       ? list.map(renderDiscussionCard).join('')
       : '<div class="empty">暂无讨论帖</div>'
 
     return '<div class="page">' +
-      '<div class="disc-hot">🔥 讨论区活跃 ' + state.discussions.length + ' 帖 · AI 已解答 ' + aiHot + ' 帖</div>' +
+      '<div class="disc-hot">🔥 讨论区活跃 ' + state.discussions.length + ' 帖 · AI 已解答 ' + aiHot + ' 帖' +
+      (folded ? ' · 已折叠 ' + folded + ' 条重复' : '') + '</div>' +
+      '<div class="ai-summary-entry" data-action="open-daily-discussion" style="margin-bottom:8px">' +
+      '<span class="ai-entry-icon">📋</span>' +
+      '<div class="ai-entry-body"><div class="ai-entry-title">AI 每日讨论总结</div>' +
+      '<div class="ai-entry-desc">梳理今日核心知识点、共性疑惑与优质观点</div></div>' +
+      '<span class="ai-entry-arrow">›</span>' +
+      '</div>' +
       '<div class="filter-bar">' + tabHtml + '</div>' +
       '<div class="list-area">' + listHtml + '</div>' +
       '</div>'
@@ -407,29 +613,42 @@
     if (!d) return '<div class="page"><div class="empty">帖子不存在或已删除</div></div>'
 
     var commentsHtml = (d.comments || []).map(function (c) {
-      return '<div class="comment-item"><div class="comment-avatar">' + Util.escapeHtml(c.author[0]) + '</div>' +
-        '<div class="comment-body"><div class="comment-name">' + Util.escapeHtml(c.author) +
+      var replyTo = c.replyTo ? '<span class="comment-reply-to">回复 @' + Util.escapeHtml(c.replyTo) + '：</span>' : ''
+      return '<div class="comment-item">' +
+        '<div class="comment-avatar">' + Util.escapeHtml(c.author[0]) + '</div>' +
+        '<div class="comment-body">' +
+        '<div class="comment-name">' + Util.escapeHtml(c.author) +
         ' <span class="comment-time">' + Util.timeAgo(c.createTime) + '</span></div>' +
-        '<div class="comment-text">' + Util.escapeHtml(c.content) + '</div></div></div>'
+        '<div class="comment-text">' + replyTo + Util.escapeHtml(c.content) + '</div>' +
+        '<div class="comment-reply-btn" data-action="reply-comment" data-id="' + d.id + '" data-author="' + Util.escapeHtml(c.author) + '">回复</div>' +
+        '</div></div>'
     }).join('') || '<div class="empty-small">还没有评论，快来抢沙发～</div>'
 
     var aiBlock = ''
     if (d.aiAnswer) {
       aiBlock = '<div class="ai-answer-card">' +
-        '<div class="ai-answer-header"><span>🤖 AI 智能解答</span><span class="ai-answer-time">' + Util.timeAgo(d.aiAnswerTime) + '</span></div>' +
-        '<div class="ai-answer-content">' + Util.nl2br(d.aiAnswer) + '</div></div>'
-    } else {
+        '<div class="ai-answer-header"><span>🤖 AI 智能解答' + (d.aiPinned ? ' ⭐' : '') + (d.aiReviewed ? ' · 教师已复核' : '') + '</span>' +
+        '<span class="ai-answer-time">' + Util.timeAgo(d.aiAnswerTime) + '</span></div>' +
+        '<div class="ai-answer-content">' + Util.nl2br(d.aiAnswer) + '</div>' +
+        (isTeacher() ? '<div class="ai-admin-actions"><button class="btn-sm" data-action="review-ai" data-id="' + d.id + '">✏️ 复核/修改</button>' +
+          '<button class="btn-sm" data-action="pin-ai" data-id="' + d.id + '">' + (d.aiPinned ? '取消置顶' : '置顶答疑') + '</button></div>' : '') +
+        '</div>'
+    } else if (state.config.aiAnswerEnabled) {
       aiBlock = '<button class="btn-ai" id="ai-answer-btn" data-action="ai-answer" data-id="' + d.id + '">' +
         '<span class="btn-ai-icon">🤖</span> AI 一键解答</button>' +
         '<div id="ai-loading" class="ai-loading" style="display:none">AI 思考中<span class="dots">…</span></div>'
+    } else {
+      aiBlock = '<div class="ai-off-tip">🤖 AI 答疑已由教师关闭</div>'
     }
 
     var likeClass = d.liked ? ' liked' : ''
     var likeText = d.liked ? '已赞' : '点赞'
+    var replyHint = pendingReplyAuthor ? '<div class="reply-hint">回复 @' + Util.escapeHtml(pendingReplyAuthor) + ' <span class="reply-cancel" data-action="cancel-reply">取消</span></div>' : ''
 
     return '<div class="page">' +
       '<div class="detail-card card">' +
       '<div class="card-top">' + renderTag(Util.DISCUSSION_CATEGORY_MAP, d.category) +
+      (d.isTop ? '<span class="badge-top">置顶</span>' : '') +
       '<span class="card-time">' + Util.formatTime(d.createTime) + '</span></div>' +
       '<h2 class="detail-title">' + Util.escapeHtml(d.title) + '</h2>' +
       '<div class="detail-author">👤 ' + Util.escapeHtml(d.author) + '</div>' +
@@ -444,6 +663,7 @@
       '<div class="section-title-inline">评论 ' + (d.comments || []).length + '</div>' +
       '<div class="comments-list">' + commentsHtml + '</div>' +
 
+      replyHint +
       '<div class="comment-input-bar">' +
       '<input id="comment-input" class="comment-input" data-id="' + d.id + '" placeholder="写下你的评论…" maxlength="200"/>' +
       '<button class="btn-comment" data-action="add-comment" data-id="' + d.id + '">发送</button>' +
@@ -465,6 +685,7 @@
       '</div>' +
       '<div class="form-label">内容 <span class="form-required">*</span></div>' +
       '<textarea id="disc-content" class="form-textarea" placeholder="请输入讨论内容"></textarea>' +
+      '<div class="form-ai-hint">🤖 AI 将自动过滤违规内容</div>' +
       '<button class="btn-primary" data-action="submit-discussion">发 布 帖 子</button>' +
       '</div></div>'
   }
@@ -481,10 +702,16 @@
     }).join('')
 
     if (!chatHtml) {
-      chatHtml = '<div class="chat-empty">🤖 我是 AI 学习助手，关于课程的任何问题都可以问我</div>'
+      chatHtml = '<div class="chat-empty">🤖 我是 AI 学习助手，关于' + (state.course ? Util.escapeHtml(state.course.name) : '课程') + '的任何问题都可以问我</div>'
     }
 
     return '<div class="page ai-page">' +
+      '<div class="ai-summary-entry" data-action="go-summary-center" style="flex-shrink:0">' +
+      '<span class="ai-entry-icon">📊</span>' +
+      '<div class="ai-entry-body"><div class="ai-entry-title">AI 内容智能总结中心</div>' +
+      '<div class="ai-entry-desc">今日重点 · 本周内容 · 未解决问题 · 高频错题</div></div>' +
+      '<span class="ai-entry-arrow">›</span>' +
+      '</div>' +
       '<div class="quick-row">' + quickHtml + '</div>' +
       '<div class="chat-area" id="chat-area">' + chatHtml + '</div>' +
       '<div class="chat-input-bar">' +
@@ -494,15 +721,75 @@
       '</div>'
   }
 
+  function renderAISummary(type) {
+    var quickSummaries = aiSummaryResult
+    if (!quickSummaries) {
+      // 等待用户点击触发
+      quickSummaries = { type: type, title: 'AI 内容总结', items: ['点击下方按钮生成总结…'], suggestion: '' }
+    }
+    var itemsHtml = quickSummaries.items.map(function (i) {
+      return '<div class="summary-item">• ' + Util.escapeHtml(i) + '</div>'
+    }).join('')
+
+    return '<div class="page">' +
+      '<div class="form-card card">' +
+      '<div class="config-title">🤖 AI 内容智能总结</div>' +
+      '<div class="config-sub">基于课程全部发布内容、留言、讨论数据生成</div>' +
+      '<div class="summary-btn-grid">' +
+      '<button class="summary-btn" data-action="do-summary" data-type="today">📅 今日课堂重点</button>' +
+      '<button class="summary-btn" data-action="do-summary" data-type="week">📚 本周学习内容</button>' +
+      '<button class="summary-btn" data-action="do-summary" data-type="unsolved">🕐 未解决问题</button>' +
+      '<button class="summary-btn" data-action="do-summary" data-type="errors">📌 高频错题知识点</button>' +
+      '</div>' +
+      '<div class="summary-result">' +
+      '<div class="summary-result-title">' + Util.escapeHtml(quickSummaries.title) + '</div>' +
+      itemsHtml +
+      (quickSummaries.suggestion ? '<div class="weekly-suggest">💡 ' + Util.escapeHtml(quickSummaries.suggestion) + '</div>' : '') +
+      '</div>' +
+      '</div></div>'
+  }
+
+  function renderPersonalStudy() {
+    var data = personalStudyData
+    if (!data) {
+      data = { userName: state.user.name, myMessageCount: 0, myPostCount: 0, weakPoints: [], suggestions: [], studyPlan: '' }
+    }
+    var weakHtml = data.weakPoints.length
+      ? data.weakPoints.map(function (w) { return '<div class="weak-item">⚠️ ' + Util.escapeHtml(w) + '</div>' }).join('')
+      : '<div class="empty-small">暂无薄弱点数据</div>'
+    var sugHtml = data.suggestions.length
+      ? data.suggestions.map(function (s) { return '<div class="sug-item">✅ ' + Util.escapeHtml(s) + '</div>' }).join('')
+      : '<div class="empty-small">暂无建议</div>'
+
+    return '<div class="page">' +
+      '<div class="form-card card">' +
+      '<div class="config-title">🎯 个性化学习梳理</div>' +
+      '<div class="config-sub">基于 ' + Util.escapeHtml(data.userName) + ' 的留言与提问记录生成</div>' +
+      '<div class="personal-stats">' +
+      '<div class="stat-item"><div class="stat-num">' + data.myMessageCount + '</div><div class="stat-label">我的留言</div></div>' +
+      '<div class="stat-item"><div class="stat-num">' + data.myPostCount + '</div><div class="stat-label">我的帖子</div></div>' +
+      '</div>' +
+      '<div class="form-label">📉 个人薄弱知识点</div>' + weakHtml +
+      '<div class="form-label">📝 个性化学习建议</div>' + sugHtml +
+      '<div class="weekly-suggest">📖 学习计划：' + Util.escapeHtml(data.studyPlan || '') + '</div>' +
+      '</div></div>'
+  }
+
   function renderProfile() {
     var u = state.user
-    var myPosts = state.discussions.filter(function (d) { return d.author === '小明同学' }).length
+    var myPosts = state.discussions.filter(function (d) { return d.author === u.name }).length
+    var roleLabel = u.role === 'teacher' ? '教师 · 超级管理员' : '学生'
+    var teacherMenu = isTeacher()
+      ? '<div class="menu-item" data-action="go-teacher-config">⚙️ 课程基础配置<span class="menu-arrow">›</span></div>' +
+        '<div class="menu-item" data-action="go-review">🛡️ AI 答疑复核<span class="menu-arrow">›</span></div>' +
+        '<div class="menu-item" data-action="open-daily">📅 AI 每日日报<span class="menu-arrow">›</span></div>'
+      : ''
     return '<div class="page">' +
       '<div class="profile-header">' +
       '<div class="profile-avatar">' + Util.escapeHtml((u.name || '小')[0]) + '</div>' +
       '<div class="profile-info">' +
       '<div class="profile-name">' + Util.escapeHtml(u.name) + '</div>' +
-      '<div class="profile-role">' + (u.role === 'teacher' ? '教师' : '学生') + '</div>' +
+      '<div class="profile-role">' + roleLabel + '</div>' +
       '</div>' +
       '</div>' +
       '<div class="profile-stats">' +
@@ -514,10 +801,38 @@
       '<div class="menu-item" data-action="go-publish">📢 教师信息发布区<span class="menu-arrow">›</span></div>' +
       '<div class="menu-item" data-action="go-message">💌 学生留言区<span class="menu-arrow">›</span></div>' +
       '<div class="menu-item" data-action="go-discussion">💬 我的讨论<span class="menu-arrow">›</span></div>' +
+      teacherMenu +
+      '<div class="menu-item" data-action="go-personal-study">🎯 个性化学习梳理<span class="menu-arrow">›</span></div>' +
       '<div class="menu-item" data-action="open-weekly">📊 AI 教学周报<span class="menu-arrow">›</span></div>' +
-      '<div class="menu-item" data-action="reset-data">🔄 重置演示数据<span class="menu-arrow">›</span></div>' +
+      '<div class="menu-item" data-action="toggle-role">🔄 切换' + (isTeacher() ? '为学生视角' : '为教师视角') + '<span class="menu-arrow">›</span></div>' +
+      '<div class="menu-item" data-action="reset-data">🗑️ 重置演示数据<span class="menu-arrow">›</span></div>' +
       '</div>' +
       '<div class="profile-footer">AI赋能课堂互动 · 网页演示版</div>' +
+      '</div>'
+  }
+
+  function renderReview() {
+    var withAnswer = state.discussions.filter(function (d) { return d.aiAnswer })
+    var listHtml = withAnswer.length
+      ? withAnswer.map(function (d) {
+        return '<div class="card review-card">' +
+          '<div class="card-top">' + renderTag(Util.DISCUSSION_CATEGORY_MAP, d.category) +
+          (d.aiPinned ? '<span class="badge-top">置顶</span>' : '') +
+          '<span class="card-time">' + Util.timeAgo(d.createTime) + '</span></div>' +
+          '<div class="review-q">❓ ' + Util.escapeHtml(d.title) + '</div>' +
+          '<div class="review-a">🤖 ' + Util.escapeHtml((d.aiAnswer || '').substring(0, 80)) + '…</div>' +
+          '<div class="ai-admin-actions">' +
+          '<button class="btn-sm" data-action="review-ai" data-id="' + d.id + '">✏️ 复核/修改</button>' +
+          '<button class="btn-sm" data-action="pin-ai" data-id="' + d.id + '">' + (d.aiPinned ? '取消置顶' : '置顶答疑') + '</button>' +
+          '<button class="btn-sm btn-danger" data-action="delete-ai" data-id="' + d.id + '">🗑️ 删除答疑</button>' +
+          '</div>' +
+          '</div>'
+      }).join('')
+      : '<div class="empty">暂无可复核的 AI 答疑</div>'
+
+    return '<div class="page">' +
+      '<div class="review-tip">🛡️ 教师复核权限：可修改、补充、置顶优质答疑，删除错误答疑</div>' +
+      listHtml +
       '</div>'
   }
 
@@ -528,10 +843,15 @@
   }
   var formState = {
     publishCat: 'homework',
+    publishType: 'text',
+    publishIsTop: false,
     msgType: 'knowledge',
     discCat: 'question'
   }
   var aiMessageSummary = null
+  var aiSummaryResult = null
+  var personalStudyData = null
+  var pendingReplyAuthor = null
 
   // ========== 渲染入口 ==========
   function renderApp() {
@@ -540,7 +860,17 @@
     var content = ''
     var page = route.page
 
+    // 未创建课程时强制进入创建页（允许停留在创建页本身）
+    if (!state.course && page !== 'createCourse') {
+      content = renderCreateCourse()
+      app.innerHTML = renderHeader({ page: 'createCourse' }) + content + renderTabBar({ page: 'createCourse' })
+      window.scrollTo(0, 0)
+      return
+    }
+
     if (page === '' || page === 'home') content = renderHome()
+    else if (page === 'createCourse') content = renderCreateCourse()
+    else if (page === 'teacherConfig') content = renderTeacherConfig()
     else if (page === 'publish') content = renderPublishList()
     else if (page === 'publishDetail') content = renderPublishDetail(route.id)
     else if (page === 'publishNew') content = renderPublishNew()
@@ -550,6 +880,9 @@
     else if (page === 'discussionDetail') content = renderDiscussionDetail(route.id)
     else if (page === 'discussionNew') content = renderDiscussionNew()
     else if (page === 'ai') content = renderAI()
+    else if (page === 'aiSummary') content = renderAISummary(route.id || 'today')
+    else if (page === 'personalStudy') content = renderPersonalStudy()
+    else if (page === 'review') content = renderReview()
     else if (page === 'profile') content = renderProfile()
     else content = renderHome()
 
@@ -582,12 +915,52 @@
     }
   }
 
+  function createCourse() {
+    var name = document.getElementById('course-name').value.trim()
+    var className = document.getElementById('course-class').value.trim()
+    var semester = document.getElementById('course-semester').value.trim()
+    var intro = document.getElementById('course-intro').value.trim()
+    if (!name) { Util.showToast('请输入课程名称'); return }
+    if (!className) { Util.showToast('请输入授课班级'); return }
+    if (!semester) { Util.showToast('请输入授课学期'); return }
+
+    state.course = {
+      id: Util.genId(),
+      name: name,
+      className: className,
+      semester: semester,
+      intro: intro || '暂无课程简介',
+      teacherName: '张教授',
+      createdAt: Date.now()
+    }
+    state.user.role = 'teacher'
+    state.user.name = '张教授'
+    saveState()
+    Util.showToast('课程小程序创建成功', 'success')
+    navigate('#/')
+  }
+
+  function useSampleCourse() {
+    var mock = global.MockData
+    state.course = JSON.parse(JSON.stringify(mock.course))
+    state.user.role = 'teacher'
+    state.user.name = '张教授'
+    saveState()
+    Util.showToast('已加载示例课程', 'success')
+    navigate('#/')
+  }
+
   function pickPublishCat(key) {
     formState.publishCat = key
     var tags = document.querySelectorAll('.form-tag[data-action="pick-publish-cat"]')
     tags.forEach(function (t) {
       t.classList.toggle('active', t.getAttribute('data-key') === key)
     })
+  }
+
+  function pickPublishType(key) {
+    formState.publishType = key
+    renderApp()
   }
 
   function pickMsgType(key) {
@@ -612,21 +985,52 @@
     if (!title) { Util.showToast('请输入标题'); return }
     if (!content) { Util.showToast('请输入内容'); return }
 
-    Util.showToast('AI 正在整理内容…')
-    var classify = await AIEngine.aiClassifyContent(content)
-    var summary = await AIEngine.aiSummarize(content)
-
-    state.publishes.unshift({
+    // 多格式字段
+    var type = formState.publishType
+    var pub = {
       id: Util.genId(),
       title: title,
       category: formState.publishCat,
       content: content,
-      summary: summary,
-      author: '张教授',
+      author: state.user.name || '张教授',
       createTime: Date.now(),
-      isTop: false,
-      views: 0
-    })
+      isTop: formState.publishIsTop,
+      views: 0,
+      type: type
+    }
+    var deadlineVal = document.getElementById('pub-deadline')
+    if (deadlineVal && deadlineVal.value) {
+      pub.deadline = new Date(deadlineVal.value).getTime()
+    }
+    if (type === 'image') {
+      var img = document.getElementById('pub-image').value.trim()
+      if (img) pub.images = [img]
+    } else if (type === 'file') {
+      var fname = document.getElementById('pub-file-name').value.trim()
+      var fsize = document.getElementById('pub-file-size').value.trim()
+      if (fname) pub.attachments = [{ name: fname, size: fsize || '未知' }]
+    } else if (type === 'link') {
+      var link = document.getElementById('pub-link').value.trim()
+      if (link) {
+        pub.link = link
+        pub.linkTitle = document.getElementById('pub-link-title').value.trim() || link
+      }
+    } else if (type === 'video') {
+      var vlink = document.getElementById('pub-video').value.trim()
+      if (vlink) {
+        pub.video = vlink
+        pub.videoTitle = document.getElementById('pub-video-title').value.trim() || '课程视频'
+      }
+    }
+
+    Util.showToast('AI 正在整理内容…')
+    var classify = await AIEngine.aiClassifyContent(content)
+    if (classify.confidence > 0.8 && classify.category !== formState.publishCat) {
+      // 仅提示，不强制覆盖教师选择
+    }
+    var summary = await AIEngine.aiSummarize(content)
+    pub.summary = summary
+    state.publishes.unshift(pub)
     saveState()
     Util.showToast('发布成功', 'success')
     navigate('#/publish')
@@ -636,8 +1040,10 @@
     var content = document.getElementById('msg-content').value.trim()
     if (!content) { Util.showToast('请输入留言内容'); return }
     var isAnon = document.getElementById('msg-anon').checked
+    var imgInput = document.getElementById('msg-image')
+    var img = imgInput ? imgInput.value.trim() : ''
 
-    state.messages.unshift({
+    var msg = {
       id: Util.genId(),
       studentName: isAnon ? '匿名同学' : state.user.name,
       isAnonymous: isAnon,
@@ -645,9 +1051,21 @@
       content: content,
       createTime: Date.now(),
       replied: false
-    })
+    }
+    if (img) msg.images = [img]
+    if (state.config.messageReviewEnabled) {
+      msg.status = 'pending'
+    } else {
+      msg.status = 'approved'
+    }
+
+    state.messages.unshift(msg)
     saveState()
-    Util.showToast('留言已提交', 'success')
+    if (state.config.messageReviewEnabled) {
+      Util.showToast('留言已提交，等待教师审核', 'success')
+    } else {
+      Util.showToast('留言已提交', 'success')
+    }
     navigate('#/message')
   }
 
@@ -657,23 +1075,31 @@
     if (!title) { Util.showToast('请输入标题'); return }
     if (!content) { Util.showToast('请输入内容'); return }
 
-    state.discussions.unshift({
-      id: Util.genId(),
-      author: state.user.name,
-      avatar: '',
-      category: formState.discCat,
-      title: title,
-      content: content,
-      createTime: Date.now(),
-      likes: 0,
-      liked: false,
-      comments: [],
-      aiAnswer: null,
-      aiAnswerTime: null
+    // AI 违规过滤
+    AIEngine.aiFilterContent(title + ' ' + content).then(function (res) {
+      if (!res.pass) {
+        Util.showToast(res.reason || '内容包含违规词，请修改', '')
+        return
+      }
+      var d = {
+        id: Util.genId(),
+        author: state.user.name,
+        avatar: '',
+        category: formState.discCat,
+        title: title,
+        content: content,
+        createTime: Date.now(),
+        likes: 0,
+        liked: false,
+        comments: [],
+        aiAnswer: null,
+        aiAnswerTime: null
+      }
+      state.discussions.unshift(d)
+      saveState()
+      Util.showToast('帖子已发布', 'success')
+      navigate('#/discussion')
     })
-    saveState()
-    Util.showToast('帖子已发布', 'success')
-    navigate('#/discussion')
   }
 
   function likeDiscussion(id) {
@@ -699,22 +1125,43 @@
     if (!content) { Util.showToast('请输入评论内容'); return }
     var d = state.discussions.find(function (x) { return x.id === id })
     if (!d) return
-    d.comments.push({ author: state.user.name, content: content, createTime: Date.now() })
+    var comment = { author: state.user.name, content: content, createTime: Date.now() }
+    if (pendingReplyAuthor) {
+      comment.replyTo = pendingReplyAuthor
+      pendingReplyAuthor = null
+    }
+    d.comments.push(comment)
     saveState()
     Util.showToast('评论成功', 'success')
+    renderApp()
+  }
+
+  function replyComment(id, author) {
+    pendingReplyAuthor = author
+    renderApp()
+    setTimeout(function () {
+      var input = document.getElementById('comment-input')
+      if (input) {
+        input.placeholder = '回复 @' + author + '…'
+        input.focus()
+      }
+    }, 50)
+  }
+
+  function cancelReply() {
+    pendingReplyAuthor = null
     renderApp()
   }
 
   async function aiAnswer(id) {
     var d = state.discussions.find(function (x) { return x.id === id })
     if (!d) return
-    // 显示加载状态
     var btn = document.getElementById('ai-answer-btn')
     var loading = document.getElementById('ai-loading')
     if (btn) btn.style.display = 'none'
     if (loading) loading.style.display = 'block'
 
-    var result = await AIEngine.aiAnswer(d.title + ' ' + d.content, '高等数学-第三章')
+    var result = await AIEngine.aiAnswer(d.title + ' ' + d.content, state.course ? state.course.name : '高等数学-第三章')
 
     d.aiAnswer = result.answer
     d.aiAnswerTime = Date.now()
@@ -726,6 +1173,8 @@
   async function aiMessageSummary() {
     Util.showToast('AI 正在分析留言…')
     aiMessageSummary = await AIEngine.aiSummarizeMessages(state.messages)
+    var unsolved = await AIEngine.aiUnsolvedList(state.messages)
+    aiMessageSummary.unsolvedList = unsolved.items
     renderApp()
     setTimeout(function () {
       var card = document.querySelector('.ai-summary-card')
@@ -740,13 +1189,47 @@
 
   async function openWeekly() {
     Util.showToast('AI 正在生成周报…')
-    var weekly = await AIEngine.aiWeeklySummary(state.publishes, state.messages, state.discussions)
+    var weekly = await AIEngine.aiWeeklySummary(state.publishes, state.messages, state.discussions, 'weekly')
     var html =
       '<div class="modal-title">🤖 AI 教学周报</div>' +
       '<div class="modal-sub">' + weekly.period + '</div>' +
       '<div class="modal-body">' +
       weekly.highlights.map(function (h) { return '<div class="weekly-item">• ' + Util.escapeHtml(h) + '</div>' }).join('') +
       '<div class="weekly-suggest">💡 ' + Util.escapeHtml(weekly.suggestion) + '</div>' +
+      '</div>' +
+      '<div class="modal-actions"><button class="btn-primary modal-btn" data-action="close-modal">知道了</button></div>'
+    showModal(html)
+  }
+
+  async function openDaily() {
+    Util.showToast('AI 正在生成日报…')
+    var daily = await AIEngine.aiWeeklySummary(state.publishes, state.messages, state.discussions, 'daily')
+    state.dailyReport = daily
+    saveState()
+    var html =
+      '<div class="modal-title">📅 AI 教学日报</div>' +
+      '<div class="modal-sub">' + daily.period + ' · 自动生成</div>' +
+      '<div class="modal-body">' +
+      daily.highlights.map(function (h) { return '<div class="weekly-item">• ' + Util.escapeHtml(h) + '</div>' }).join('') +
+      '<div class="weekly-suggest">💡 ' + Util.escapeHtml(daily.suggestion) + '</div>' +
+      '</div>' +
+      '<div class="modal-actions"><button class="btn-primary modal-btn" data-action="close-modal">知道了</button></div>'
+    showModal(html)
+  }
+
+  async function openDailyDiscussion() {
+    Util.showToast('AI 正在生成每日讨论总结…')
+    var result = await AIEngine.aiDailyDiscussionSummary(state.discussions)
+    var html =
+      '<div class="modal-title">📋 AI 每日讨论总结</div>' +
+      '<div class="modal-sub">' + result.period + '</div>' +
+      '<div class="modal-body">' +
+      '<div class="summary-block-title">📌 核心讨论知识点</div>' +
+      result.keyPoints.map(function (k) { return '<div class="weekly-item">• ' + Util.escapeHtml(k) + '</div>' }).join('') +
+      '<div class="summary-block-title">❓ 共性疑惑</div>' +
+      result.commonDoubts.map(function (k) { return '<div class="weekly-item">• ' + Util.escapeHtml(k) + '</div>' }).join('') +
+      '<div class="summary-block-title">💡 优质学习观点</div>' +
+      result.qualityViews.map(function (k) { return '<div class="weekly-item">• ' + Util.escapeHtml(k) + '</div>' }).join('') +
       '</div>' +
       '<div class="modal-actions"><button class="btn-primary modal-btn" data-action="close-modal">知道了</button></div>'
     showModal(html)
@@ -785,6 +1268,171 @@
     })
   }
 
+  async function doSummary(type) {
+    Util.showToast('AI 正在生成总结…')
+    aiSummaryResult = await AIEngine.aiQuickSummary(type, state.publishes, state.messages, state.discussions)
+    renderApp()
+  }
+
+  async function goPersonalStudy() {
+    Util.showToast('AI 正在梳理学习记录…')
+    personalStudyData = await AIEngine.aiPersonalStudy(state.user.name, state.messages, state.discussions)
+    navigate('#/personalStudy')
+  }
+
+  function reviewAI(id) {
+    var d = state.discussions.find(function (x) { return x.id === id })
+    if (!d) return
+    var html =
+      '<div class="modal-title">✏️ 复核 AI 答疑</div>' +
+      '<div class="modal-sub">❓ ' + Util.escapeHtml(d.title) + '</div>' +
+      '<textarea id="review-text" class="form-textarea" style="min-height:160px">' + Util.escapeHtml(d.aiAnswer || '') + '</textarea>' +
+      '<div class="modal-actions">' +
+      '<button class="btn-primary modal-btn" data-action="save-review" data-id="' + d.id + '">保存修改</button>' +
+      '<button class="btn-ghost modal-btn" data-action="close-modal">取消</button>' +
+      '</div>'
+    showModal(html)
+  }
+
+  function saveReview(id) {
+    var d = state.discussions.find(function (x) { return x.id === id })
+    if (!d) return
+    var text = document.getElementById('review-text')
+    if (!text) return
+    var content = text.value.trim()
+    if (!content) { Util.showToast('内容不能为空'); return }
+    d.aiAnswer = content
+    d.aiReviewed = true
+    saveState()
+    hideModal()
+    Util.showToast('答疑已更新', 'success')
+    renderApp()
+  }
+
+  function pinAI(id) {
+    var d = state.discussions.find(function (x) { return x.id === id })
+    if (!d) return
+    d.aiPinned = !d.aiPinned
+    saveState()
+    Util.showToast(d.aiPinned ? '答疑已置顶' : '已取消置顶')
+    renderApp()
+  }
+
+  function deleteAI(id) {
+    var d = state.discussions.find(function (x) { return x.id === id })
+    if (!d) return
+    if (!window.confirm('确认删除该 AI 答疑？')) return
+    d.aiAnswer = null
+    d.aiAnswerTime = null
+    d.aiReviewed = false
+    d.aiPinned = false
+    saveState()
+    Util.showToast('答疑已删除')
+    renderApp()
+  }
+
+  function replyMessage(id) {
+    var m = state.messages.find(function (x) { return x.id === id })
+    if (!m) return
+    var html =
+      '<div class="modal-title">回复留言</div>' +
+      '<div class="modal-sub">' + (m.isAnonymous ? '🕶 匿名同学' : Util.escapeHtml(m.studentName)) + ' · ' + Util.escapeHtml(m.content) + '</div>' +
+      '<textarea id="reply-text" class="form-textarea" placeholder="输入回复内容…"></textarea>' +
+      '<div class="modal-actions">' +
+      '<button class="btn-primary modal-btn" data-action="save-message-reply" data-id="' + m.id + '">回复</button>' +
+      '<button class="btn-ghost modal-btn" data-action="close-modal">取消</button>' +
+      '</div>'
+    showModal(html)
+  }
+
+  function saveMessageReply(id) {
+    var m = state.messages.find(function (x) { return x.id === id })
+    if (!m) return
+    var text = document.getElementById('reply-text')
+    if (!text || !text.value.trim()) { Util.showToast('请输入回复内容'); return }
+    m.reply = text.value.trim()
+    m.replied = true
+    m.replyTime = Date.now()
+    saveState()
+    hideModal()
+    Util.showToast('回复成功', 'success')
+    renderApp()
+  }
+
+  function approveMessage(id) {
+    var m = state.messages.find(function (x) { return x.id === id })
+    if (!m) return
+    m.status = 'approved'
+    saveState()
+    Util.showToast('留言已通过', 'success')
+    renderApp()
+  }
+
+  function rejectMessage(id) {
+    var m = state.messages.find(function (x) { return x.id === id })
+    if (!m) return
+    m.status = 'rejected'
+    saveState()
+    Util.showToast('留言已拒绝')
+    renderApp()
+  }
+
+  function togglePublishTop(id) {
+    var p = state.publishes.find(function (x) { return x.id === id })
+    if (!p) return
+    p.isTop = !p.isTop
+    saveState()
+    Util.showToast(p.isTop ? '已置顶' : '已取消置顶')
+    renderApp()
+  }
+
+  function deletePublish(id) {
+    var p = state.publishes.find(function (x) { return x.id === id })
+    if (!p) return
+    if (!window.confirm('确认删除该发布内容？')) return
+    state.publishes = state.publishes.filter(function (x) { return x.id !== id })
+    saveState()
+    Util.showToast('已删除')
+    renderApp()
+  }
+
+  function setStyle(val) {
+    state.config.pageStyle = val
+    saveState()
+    applyPageStyle()
+    renderApp()
+  }
+
+  function toggleConfig(key) {
+    state.config[key] = !state.config[key]
+    saveState()
+    Util.showToast('配置已更新', 'success')
+    renderApp()
+  }
+
+  function applyPageStyle() {
+    var style = state.config.pageStyle
+    var app = document.querySelector('.app')
+    if (app) {
+      if (style === 'compact') {
+        app.classList.add('compact')
+      } else {
+        app.classList.remove('compact')
+      }
+    }
+  }
+
+  function toggleRole() {
+    if (isTeacher()) {
+      state.user = { name: '小明同学', role: 'student' }
+    } else {
+      state.user = { name: '张教授', role: 'teacher' }
+    }
+    saveState()
+    Util.showToast('已切换为' + (isTeacher() ? '教师视角' : '学生视角'), 'success')
+    renderApp()
+  }
+
   // ========== 全局事件委托 ==========
   function handleAction(action, el, e) {
     var id = el.getAttribute('data-id')
@@ -795,6 +1443,12 @@
       case 'go-message': navigate('#/message'); break
       case 'go-discussion': navigate('#/discussion'); break
       case 'go-ai': navigate('#/ai'); break
+      case 'go-teacher-config': navigate('#/teacherConfig'); break
+      case 'go-review': navigate('#/review'); break
+      case 'go-personal-study': goPersonalStudy(); break
+      case 'go-summary-center': navigate('#/aiSummary'); break
+      case 'go-summary-today': navigate('#/aiSummary/today'); break
+      case 'go-summary-errors': navigate('#/aiSummary/errors'); break
       case 'open-publish-detail': navigate('#/publishDetail/' + id); break
       case 'open-discussion-detail': navigate('#/discussionDetail/' + id); break
       case 'new-publish': navigate('#/publishNew'); break
@@ -807,19 +1461,43 @@
         tabState.discussionFilter = key
         renderApp(); break
       case 'pick-publish-cat': pickPublishCat(key); break
+      case 'pick-publish-type': pickPublishType(key); break
       case 'pick-msg-type': pickMsgType(key); break
       case 'pick-disc-cat': pickDiscCat(key); break
+      case 'toggle-publish-top-new':
+        formState.publishIsTop = !formState.publishIsTop
+        renderApp(); break
+      case 'toggle-publish-top': togglePublishTop(id); break
+      case 'delete-publish': deletePublish(id); break
       case 'submit-publish': submitPublish(); break
       case 'submit-message': submitMessage(); break
       case 'submit-discussion': submitDiscussion(); break
       case 'like-discussion': likeDiscussion(id); break
       case 'add-comment': addComment(id); break
+      case 'reply-comment': replyComment(id, el.getAttribute('data-author')); break
+      case 'cancel-reply': cancelReply(); break
       case 'ai-answer': aiAnswer(id); break
       case 'ai-message-summary': aiMessageSummary(); break
       case 'close-ai-summary': closeAiSummary(); break
       case 'open-weekly': openWeekly(); break
+      case 'open-daily': openDaily(); break
+      case 'open-daily-discussion': openDailyDiscussion(); break
       case 'quick-ask': quickAsk(e); break
       case 'send-ai': sendAI(); break
+      case 'do-summary': doSummary(key); break
+      case 'review-ai': reviewAI(id); break
+      case 'save-review': saveReview(id); break
+      case 'pin-ai': pinAI(id); break
+      case 'delete-ai': deleteAI(id); break
+      case 'reply-message': replyMessage(id); break
+      case 'save-message-reply': saveMessageReply(id); break
+      case 'approve-message': approveMessage(id); break
+      case 'reject-message': rejectMessage(id); break
+      case 'set-style': setStyle(el.getAttribute('data-val')); break
+      case 'toggle-config': toggleConfig(key); break
+      case 'create-course': createCourse(); break
+      case 'use-sample-course': useSampleCourse(); break
+      case 'toggle-role': toggleRole(); break
       case 'reset-data': resetData(); break
       case 'close-modal': hideModal(); break
     }
@@ -827,7 +1505,6 @@
 
   function bindEvents() {
     document.addEventListener('click', function (e) {
-      // 事件委托：向上找最近的 [data-action]
       var el = e.target
       while (el && el !== document) {
         var action = el.getAttribute && el.getAttribute('data-action')
@@ -839,7 +1516,6 @@
       }
     })
 
-    // 回车发送 AI 问题
     document.addEventListener('keydown', function (e) {
       if (e.key === 'Enter' && e.target && e.target.id === 'ai-input') {
         sendAI()
@@ -857,6 +1533,7 @@
   function init() {
     loadState()
     bindEvents()
+    applyPageStyle()
     renderApp()
   }
 

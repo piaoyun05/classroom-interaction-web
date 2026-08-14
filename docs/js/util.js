@@ -66,6 +66,28 @@
     other: '其他'
   }
 
+  // 发布内容格式类型
+  const CONTENT_TYPE_MAP = {
+    text: { label: '纯文字', icon: '📝' },
+    image: { label: '图文', icon: '🖼️' },
+    file: { label: '附件资料', icon: '📎' },
+    link: { label: '链接', icon: '🔗' },
+    video: { label: '视频', icon: '🎬' }
+  }
+
+  // 课程主题色配置
+  const THEMES = {
+    blue: { label: '科技蓝', primary: '#4a6cf7', bg: 'linear-gradient(135deg, #4a6cf7, #7b5bf2)' },
+    green: { label: '清新绿', primary: '#12b76a', bg: 'linear-gradient(135deg, #12b76a, #0ea5e9)' },
+    purple: { label: '优雅紫', primary: '#7c3aed', bg: 'linear-gradient(135deg, #7c3aed, #db2777)' },
+    orange: { label: '活力橙', primary: '#f79009', bg: 'linear-gradient(135deg, #f79009, #f43f5e)' }
+  }
+
+  // 敏感词（用于 AI 过滤违规内容，演示用）
+  const VIOLATION_KEYWORDS = [
+    '广告', '代写', '兼职', '加微信', '加qq', '代考', '答案出售', '红包', '转账', '赌博', '贷款'
+  ]
+
   // 浏览器版本地存储
   const storage = {
     get(key, defaultVal) {
@@ -134,6 +156,9 @@
     nl2br: nl2br,
     CATEGORY_MAP: CATEGORY_MAP,
     DISCUSSION_CATEGORY_MAP: DISCUSSION_CATEGORY_MAP,
-    MESSAGE_TYPE_MAP: MESSAGE_TYPE_MAP
+    MESSAGE_TYPE_MAP: MESSAGE_TYPE_MAP,
+    CONTENT_TYPE_MAP: CONTENT_TYPE_MAP,
+    THEMES: THEMES,
+    VIOLATION_KEYWORDS: VIOLATION_KEYWORDS
   }
 })(window)

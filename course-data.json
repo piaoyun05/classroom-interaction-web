@@ -10,5 +10,30 @@
       "createdAt": 1786684558123
     }
   },
-  "data": {}
+  "data": {
+    "__live_test_1786684558121__": {
+      "publishes": [],
+      "messages": [],
+      "discussions": [
+        {
+          "id": "d_live",
+          "courseId": "__live_test_1786684558121__",
+          "author": "学生A",
+          "title": "同步测试",
+          "content": "你好",
+          "category": "question",
+          "createTime": 1786684560083,
+          "likes": 0,
+          "comments": [
+            {
+              "author": "同学",
+              "content": "收到"
+            }
+          ],
+          "aiAnswer": null
+        }
+      ],
+      "config": {}
+    }
+  }
 }

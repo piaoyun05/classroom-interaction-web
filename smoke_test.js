@@ -61,7 +61,8 @@ const win = {
   scrollTo: () => {},
   addEventListener: (type, fn) => { eventHandlers['w_' + type] = fn },
   history: { length: 1, back: () => {} },
-  confirm: () => true
+  confirm: () => true,
+  open: () => ({ document: { write: () => {}, close: () => {} }, focus: () => {}, closed: false })
 }
 
 const sandbox = {
@@ -195,6 +196,8 @@ contentCheck(appEl._innerHTML, 'AI 内容智能总结', 'AI总结中心')
 
 renderRoute('#/profile')
 contentCheck(appEl._innerHTML, 'AI 答疑复核', '个人中心教师菜单')
+contentCheck(appEl._innerHTML, '导出课程信息(PDF)', '教师我的显示导出课程入口')
+contentCheck(appEl._innerHTML, '重置课程', '教师我的显示重置课程入口')
 
 // 教师配置页：AI 大模型配置（DeepSeek key 本地存储）
 renderRoute('#/teacherConfig')
@@ -231,7 +234,8 @@ contentNotCheck(appEl._innerHTML, '查看本周 AI 教学周报', '学生首页�
 // 学生「我的」：显示切换教师视角入口（需密码），但不显示教师功能
 renderRoute('#/profile')
 contentCheck(appEl._innerHTML, '切换为教师视角', '学生我的显示切换教师视角入口')
-contentNotCheck(appEl._innerHTML, '重置演示数据', '学生我的不显示重置演示数据')
+contentNotCheck(appEl._innerHTML, '重置课程', '学生我的不显示重置课程')
+contentNotCheck(appEl._innerHTML, '导出课程信息', '学生我的不显示导出课程')
 contentNotCheck(appEl._innerHTML, 'AI 教学周报', '学生我的不显示AI教学周报')
 // 学生访问答疑复核应被重定向回首页
 renderRoute('#/review')

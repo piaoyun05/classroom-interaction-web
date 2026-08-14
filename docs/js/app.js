@@ -63,7 +63,39 @@
     Util.storage.set(STORAGE_KEYS.config, state.config)
   }
 
+  // 重置课程：密码校验（与切换视角同一密码）→ 先导出PDF → 完成后重置
   function resetData() {
+    if (!isTeacher()) return
+    var pwd = Util.storage.get('web_role_pwd', '') || ''
+    if (pwd) {
+      var html =
+        '<div class="modal-title">🗑️ 重置课程</div>' +
+        '<div class="modal-sub">将先导出课程PDF，再清空课程数据。请输入切换视角密码：</div>' +
+        '<input id="reset-pwd-input" class="form-input" type="password" placeholder="输入密码" style="width:100%;margin:12px 0"/>' +
+        '<div class="modal-actions">' +
+        '<button class="btn-primary modal-btn" data-action="confirm-reset-data">确认重置</button>' +
+        '<button class="btn-ghost modal-btn" data-action="close-modal">取消</button>' +
+        '</div>'
+      showModal(html)
+      return
+    }
+    exportThenReset()
+  }
+
+  function confirmResetData() {
+    var input = document.getElementById('reset-pwd-input')
+    var pwd = Util.storage.get('web_role_pwd', '') || ''
+    if (!input || input.value.trim() !== pwd) { Util.showToast('密码错误'); return }
+    hideModal()
+    exportThenReset()
+  }
+
+  // 先打开导出PDF打印窗口，打印完成后回调 doResetCourse
+  function exportThenReset() {
+    exportCoursePdf(true)
+  }
+
+  function doResetCourse() {
     if (!isTeacher()) return
     var mock = global.MockData
     state.publishes = JSON.parse(JSON.stringify(mock.publishes))
@@ -75,7 +107,100 @@
     state.course = null
     state.config = JSON.parse(JSON.stringify(DEFAULT_CONFIG))
     saveState()
+    Util.showToast('课程已重置', 'success')
     renderApp()
+  }
+
+  // ========== 课程信息 PDF 导出 ==========
+  var EXPORT_CSS = 'body{font-family:"Microsoft YaHei","PingFang SC",sans-serif;padding:28px;color:#333;line-height:1.6}' +
+    'h1{font-size:22px;border-bottom:2px solid #4a7cff;padding-bottom:8px;margin-bottom:6px}' +
+    'h2{font-size:16px;color:#4a7cff;margin:22px 0 8px;border-left:4px solid #4a7cff;padding-left:8px}' +
+    '.meta{color:#888;font-size:12px;margin:2px 0}' +
+    '.item{margin:8px 0;padding:10px;border:1px solid #e5e7eb;border-radius:6px;page-break-inside:avoid}' +
+    '.item .t{font-weight:bold}' +
+    '.item .m{color:#888;font-size:12px;margin:2px 0}' +
+    '.item .c{margin-top:4px;white-space:pre-wrap;font-size:13px}' +
+    '.tag{display:inline-block;background:#eef2ff;color:#4a7cff;font-size:11px;border-radius:4px;padding:1px 6px;margin-right:4px}'
+
+  function buildCourseExportHtml(withReset) {
+    var c = state.course || {}
+    var esc = Util.escapeHtml
+    var fmt = function (t) { return t ? Util.formatDate(t) : '' }
+    var parts = []
+
+    parts.push('<h1>' + esc(c.name || '课程信息') + '</h1>')
+    parts.push('<p class="meta">导出时间：' + new Date().toLocaleString() + '</p>')
+    parts.push('<p class="meta">班级：' + esc(c.className || '-') + ' ｜ 学期：' + esc(c.semester || '-') + ' ｜ 教师：' + esc(c.teacherName || '-') + '</p>')
+
+    parts.push('<h2>概览</h2>')
+    parts.push('<p>教师发布 <b>' + state.publishes.length + '</b> 条 ｜ 学生留言 <b>' + state.messages.length + '</b> 条 ｜ 讨论帖 <b>' + state.discussions.length + '</b> 条</p>')
+
+    parts.push('<h2>一、课程信息</h2>')
+    parts.push('<div class="item"><p>课程名称：' + esc(c.name || '-') + '</p><p>授课班级：' + esc(c.className || '-') + '</p><p>授课学期：' + esc(c.semester || '-') + '</p><p>任课教师：' + esc(c.teacherName || '-') + '</p><p>课程简介：' + esc(c.intro || '暂无') + '</p></div>')
+
+    parts.push('<h2>二、教师发布内容（' + state.publishes.length + ' 条）</h2>')
+    if (!state.publishes.length) parts.push('<p>暂无发布内容</p>')
+    state.publishes.forEach(function (p) {
+      var cat = (Util.CATEGORY_MAP[p.category] && Util.CATEGORY_MAP[p.category].label) || p.category || ''
+      parts.push('<div class="item"><div class="t">' + esc(p.title || '') + (p.isTop ? '（置顶）' : '') + '</div>' +
+        '<div class="m">' + esc(cat) + ' ｜ 发布：' + esc(p.author || '') + ' ｜ ' + fmt(p.createTime) + (p.deadline ? ' ｜ 截止：' + fmt(p.deadline) : '') + '</div>' +
+        '<div class="c">' + esc(p.content || p.summary || '') + '</div></div>')
+    })
+
+    parts.push('<h2>三、学生留言（' + state.messages.length + ' 条）</h2>')
+    if (!state.messages.length) parts.push('<p>暂无留言</p>')
+    state.messages.forEach(function (m) {
+      var st = m.status === 'pending' ? '待审核' : (m.status === 'rejected' ? '已驳回' : (m.replied ? '已回复' : '未回复'))
+      parts.push('<div class="item"><div class="t">' + esc(m.studentName || '匿名') + ' ｜ ' + esc(m.type || '') + '</div>' +
+        '<div class="m">' + fmt(m.createTime) + ' ｜ ' + st + '</div>' +
+        '<div class="c">' + esc(m.content || '') + '</div>' +
+        (m.reply ? '<div class="c">教师回复：' + esc(m.reply) + '</div>' : '') + '</div>')
+    })
+
+    parts.push('<h2>四、学生讨论（' + state.discussions.length + ' 条）</h2>')
+    if (!state.discussions.length) parts.push('<p>暂无讨论</p>')
+    state.discussions.forEach(function (d) {
+      var dcat = (Util.DISCUSSION_CATEGORY_MAP[d.category] && Util.DISCUSSION_CATEGORY_MAP[d.category].label) || d.category || ''
+      var commentsHtml = (d.comments && d.comments.length)
+        ? '<div class="c">' + d.comments.map(function (cm) { return '💬 ' + esc(cm.author || '') + '：' + esc(cm.content || '') }).join('<br/>') + '</div>'
+        : ''
+      parts.push('<div class="item"><div class="t">' + esc(d.title || '') + '</div>' +
+        '<div class="m">' + esc(d.author || '') + ' ｜ ' + esc(dcat) + ' ｜ ' + fmt(d.createTime) + (d.likes ? ' ｜ 👍 ' + d.likes : '') + '</div>' +
+        '<div class="c">' + esc(d.content || '') + '</div>' +
+        commentsHtml +
+        (d.aiAnswer ? '<div class="c">🤖 AI 解答：' + esc(d.aiAnswer) + '</div>' : '') + '</div>')
+    })
+
+    var cfg = state.config || {}
+    parts.push('<h2>五、课程配置</h2>')
+    parts.push('<div class="item"><p>页面样式：' + (cfg.pageStyle === 'compact' ? '紧凑风格' : '默认风格') + '</p>' +
+      '<p>留言审核开关：' + (cfg.messageReviewEnabled ? '开启' : '关闭') + '</p>' +
+      '<p>讨论区发言权限：' + (cfg.discussionPostEnabled ? '开启' : '关闭') + '</p>' +
+      '<p>AI 答疑开关：' + (cfg.aiAnswerEnabled ? '开启' : '关闭') + '</p></div>')
+
+    var body = parts.join('')
+    var resetFooter = withReset
+      ? '<div style="margin-top:24px;padding:14px;border:1px dashed #e11d48;background:#fff5f5;border-radius:8px">' +
+        '📋 已为你打开打印对话框，请选择「另存为 PDF」保存本课程信息；' +
+        '确认导出完成后，点击下方按钮重置课程：<br/><br/>' +
+        '<button onclick="try{window.opener.doResetCourse();window.close()}catch(e){}" ' +
+        'style="padding:10px 20px;background:#e11d48;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:14px">✅ 已导出，确认重置课程</button>' +
+        '</div>'
+      : ''
+    return '<!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8"/><title>' + esc(c.name || '课程信息') + ' - 课程导出</title>' +
+      '<style>' + EXPORT_CSS + '</style></head><body>' + body + resetFooter +
+      '<script>setTimeout(function(){window.print()}, 500)</script></body></html>'
+  }
+
+  // 打开导出PDF打印窗口；withReset=true 时打印完成后会回调重置课程
+  function exportCoursePdf(withReset) {
+    var html = buildCourseExportHtml(!!withReset)
+    var w = window.open('', '_blank')
+    if (!w) { Util.showToast('浏览器拦截了弹出窗口，请允许后再试'); return }
+    w.document.write(html)
+    w.document.close()
+    w.focus()
+    Util.showToast('已生成课程导出，请在打印窗口另存为PDF', 'success')
   }
 
   // ========== 云端同步（GitHub Gist） ==========
@@ -915,7 +1040,8 @@
       '<div class="menu-item" data-action="go-personal-study">🎯 个性化学习梳理<span class="menu-arrow">›</span></div>' +
       (isTeacher()
         ? '<div class="menu-item" data-action="open-weekly">📊 AI 教学周报<span class="menu-arrow">›</span></div>' +
-          '<div class="menu-item" data-action="reset-data">🗑️ 重置演示数据<span class="menu-arrow">›</span></div>'
+          '<div class="menu-item" data-action="export-course">📄 导出课程信息(PDF)<span class="menu-arrow">›</span></div>' +
+          '<div class="menu-item" data-action="reset-data">🗑️ 重置课程<span class="menu-arrow">›</span></div>'
         : '') +
       '<div class="menu-item" data-action="toggle-role">🔄 切换为' + (isTeacher() ? '学生视角' : '教师视角') + '<span class="menu-arrow">›</span></div>' +
       '</div>' +
@@ -1755,6 +1881,8 @@
       case 'go-share-qr': navigate('#/courseCreated'); break
       case 'toggle-role': toggleRole(); break
       case 'reset-data': resetData(); break
+      case 'confirm-reset-data': confirmResetData(); break
+      case 'export-course': exportCoursePdf(false); break
       case 'close-modal': hideModal(); break
     }
   }
@@ -1805,6 +1933,9 @@
       startBackendSync()
     }
   }
+
+  // 暴露给「导出PDF」打印窗口，打印完成后回调重置课程
+  global.doResetCourse = doResetCourse
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init)

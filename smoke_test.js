@@ -161,7 +161,6 @@ const homeHtml = renderRoute('#/')
 contentCheck(homeHtml, '核心板块', '首页核心板块')
 contentCheck(homeHtml, 'AI 教学周报', '首页周报入口')
 contentCheck(homeHtml, '个性化学习梳理', '首页个性化学习入口')
-contentCheck(homeHtml, '基础配置', '首页教师配置入口')
 
 renderRoute('#/publish')
 contentCheck(appEl._innerHTML, 'AI 已自动将发布内容分类', '发布区AI分类条')

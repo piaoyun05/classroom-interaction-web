@@ -408,11 +408,6 @@
     if (!state.course) return renderCreateCourse()
     var unrepliedCount = state.messages.filter(function (m) { return !m.replied && m.status !== 'rejected' }).length
     var aiDiscussed = state.discussions.filter(function (d) { return d.aiAnswer }).length
-    var teacherEntry = isTeacher()
-      ? '<div class="teacher-tools"><div class="teacher-tool" data-action="go-teacher-config">⚙️ 基础配置</div>' +
-        '<div class="teacher-tool" data-action="go-review">🛡️ 答疑复核</div>' +
-        '<div class="teacher-tool" data-action="open-daily">📅 AI 日报</div></div>'
-      : ''
     return '<div class="page home-page">' +
       '<div class="home-hero">' +
       '<div class="hero-greet">' + (isTeacher() ? '教师您好，' : '你好，') + Util.escapeHtml(state.user.name) + ' 👋</div>' +
@@ -420,7 +415,6 @@
       ' · ' + Util.escapeHtml(state.course.semester) + '</div>' +
       '<div class="hero-ai" data-action="open-weekly"><span class="hero-ai-icon">✨</span> 查看本周 AI 教学周报</div>' +
       '</div>' +
-      teacherEntry +
       '<div class="section-title">核心板块</div>' +
       '<div class="module-grid">' +
       '<div class="module-card" data-action="go-publish">' +

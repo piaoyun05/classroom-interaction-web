@@ -97,11 +97,11 @@
 
   function doResetCourse() {
     if (!isTeacher()) return
-    var mock = global.MockData
-    state.publishes = JSON.parse(JSON.stringify(mock.publishes))
-    state.messages = JSON.parse(JSON.stringify(mock.messages))
-    state.discussions = JSON.parse(JSON.stringify(mock.discussions))
-    state.weeklyReport = JSON.parse(JSON.stringify(mock.weeklyReport))
+    // 重置为完全空白：不保留原课程数据，也不回填示例数据
+    state.publishes = []
+    state.messages = []
+    state.discussions = []
+    state.weeklyReport = {}
     state.dailyReport = {}
     state.aiHistory = []
     state.course = null
@@ -1939,6 +1939,9 @@
       startBackendSync()
     }
   }
+
+  // 暴露给外部（测试/重置导出流程）
+  global.doResetCourse = doResetCourse
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init)

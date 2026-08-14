@@ -77,6 +77,50 @@
     renderApp()
   }
 
+  // ========== 云端同步（Supabase） ==========
+  // 后端未配置时 backendOn() 为 false，以下方法全部静默降级为本地存储。
+  function backendOn() {
+    return (typeof Backend !== 'undefined') && Backend && Backend.isEnabled()
+  }
+  function syncPush(table, row) {
+    if (!backendOn() || !state.course) return
+    var r = Object.assign({}, row)
+    if (table !== 'courses') r.courseId = state.course.id
+    Backend.upsert(table, r)
+  }
+  function syncDelete(table, id) {
+    if (!backendOn()) return
+    Backend.remove(table, id)
+  }
+  // 从云端拉取当前课程的共享数据并覆盖本地
+  function syncFromBackend() {
+    if (!backendOn() || !state.course) return
+    Backend.loadAll(state.course.id).then(function (shared) {
+      if (!shared) return
+      if (shared.publishes && shared.publishes.length) state.publishes = shared.publishes
+      if (shared.messages && shared.messages.length) state.messages = shared.messages
+      if (shared.discussions && shared.discussions.length) state.discussions = shared.discussions
+      if (shared.config) state.config = Object.assign({}, DEFAULT_CONFIG, shared.config)
+      saveState()
+      renderApp()
+    })
+  }
+  // 开启实时订阅：云端任意变更后自动刷新
+  function startRealtime() {
+    if (!backendOn() || !state.course) return
+    Backend.unsubscribe()
+    Backend.subscribe(state.course.id, function () {
+      syncFromBackend()
+    })
+  }
+  // 将当前演示内容同步到云端，使云端成为唯一真相源（师生视图一致）
+  function seedToBackend() {
+    if (!backendOn() || !state.course) return
+    ;(state.publishes || []).forEach(function (p) { syncPush('publishes', p) })
+    ;(state.messages || []).forEach(function (m) { syncPush('messages', m) })
+    ;(state.discussions || []).forEach(function (d) { syncPush('discussions', d) })
+  }
+
   function isTeacher() {
     return state.user.role === 'teacher'
   }
@@ -987,6 +1031,11 @@
     state.user.role = 'teacher'
     state.user.name = teacher
     saveState()
+    // 写入云端，供学生扫码同步
+    syncPush('courses', state.course)
+    Backend && Backend.isEnabled && Backend.upsert('course_config', Object.assign({ courseId: state.course.id }, state.config))
+    seedToBackend()
+    startRealtime()
     Util.showToast('课程小程序创建成功', 'success')
     navigate('#/courseCreated')
   }
@@ -997,30 +1046,59 @@
     state.user.role = 'teacher'
     state.user.name = mock.course.teacherName || '张教授'
     saveState()
+    syncPush('courses', state.course)
+    Backend && Backend.isEnabled && Backend.upsert('course_config', Object.assign({ courseId: state.course.id }, state.config))
+    seedToBackend()
+    startRealtime()
     Util.showToast('已加载示例课程', 'success')
     navigate('#/courseCreated')
   }
 
-  function initStudentView(data) {
-    try {
-      var course = Util.b64Decode(data)
-      var mock = global.MockData
-      state.course = course
-      state.user = { name: '同学', role: 'student' }
-      // 加载示例内容供学生浏览
+  function applyStudentData(course, shared) {
+    state.course = course
+    state.user = { name: '同学', role: 'student' }
+    var mock = global.MockData
+    if (shared && shared.publishes && shared.publishes.length) {
+      // 云端真实课程数据
+      state.publishes = shared.publishes
+      state.messages = shared.messages || []
+      state.discussions = shared.discussions || []
+      if (shared.config) state.config = Object.assign({}, DEFAULT_CONFIG, shared.config)
+    } else {
+      // 离线/后端未配置：用示例数据填充以便浏览
       state.publishes = JSON.parse(JSON.stringify(mock.publishes))
       state.messages = JSON.parse(JSON.stringify(mock.messages))
       state.discussions = JSON.parse(JSON.stringify(mock.discussions))
-      state.dailyDiscussion = JSON.parse(JSON.stringify(mock.dailyDiscussion))
-      state.aiHistory = []
-      saveState()
-      Util.showToast('已加入「' + course.name + '」', 'success')
-      navigate('#/')
+    }
+    state.dailyDiscussion = JSON.parse(JSON.stringify(mock.dailyDiscussion))
+    state.aiHistory = []
+    saveState()
+    Util.showToast('已加入「' + course.name + '」', 'success')
+    navigate('#/')
+  }
+
+  function initStudentView(data) {
+    var course
+    try {
+      course = Util.b64Decode(data)
     } catch (e) {
       var app = document.getElementById('app')
       app.innerHTML = renderHeader({ page: 'home' }) +
         '<div class="page"><div class="card"><div class="empty">⚠️ 二维码数据无效，请重新扫码</div></div></div>' +
         renderTabBar({ page: 'home' })
+      return
+    }
+    // 尝试从云端拉取真实课程与共享数据（按课程 id 同步）
+    if (backendOn()) {
+      Backend.loadCourse(course.id).then(function (real) {
+        if (real) course = real
+        Backend.loadAll(course.id).then(function (shared) {
+          applyStudentData(course, shared)
+          startRealtime()
+        }).catch(function () { applyStudentData(course, null) })
+      }).catch(function () { applyStudentData(course, null) })
+    } else {
+      applyStudentData(course, null)
     }
   }
 
@@ -1118,6 +1196,7 @@
     pub.summary = summary
     state.publishes.unshift(pub)
     saveState()
+    syncPush('publishes', pub)
     Util.showToast('发布成功', 'success')
     navigate('#/publish')
   }
@@ -1147,6 +1226,7 @@
 
     state.messages.unshift(msg)
     saveState()
+    syncPush('messages', msg)
     if (state.config.messageReviewEnabled) {
       Util.showToast('留言已提交，等待教师审核', 'success')
     } else {
@@ -1183,6 +1263,7 @@
       }
       state.discussions.unshift(d)
       saveState()
+      syncPush('discussions', d)
       Util.showToast('帖子已发布', 'success')
       navigate('#/discussion')
     })
@@ -1201,6 +1282,7 @@
       Util.showToast('点赞成功', 'success')
     }
     saveState()
+    syncPush('discussions', d)
     renderApp()
   }
 
@@ -1218,6 +1300,7 @@
     }
     d.comments.push(comment)
     saveState()
+    syncPush('discussions', d)
     Util.showToast('评论成功', 'success')
     renderApp()
   }
@@ -1252,6 +1335,7 @@
     d.aiAnswer = result.answer
     d.aiAnswerTime = Date.now()
     saveState()
+    syncPush('discussions', d)
     Util.showToast('AI 解答完成', 'success')
     renderApp()
   }
@@ -1390,6 +1474,7 @@
     d.aiAnswer = content
     d.aiReviewed = true
     saveState()
+    syncPush('discussions', d)
     hideModal()
     Util.showToast('答疑已更新', 'success')
     renderApp()
@@ -1400,6 +1485,7 @@
     if (!d) return
     d.aiPinned = !d.aiPinned
     saveState()
+    syncPush('discussions', d)
     Util.showToast(d.aiPinned ? '答疑已置顶' : '已取消置顶')
     renderApp()
   }
@@ -1413,6 +1499,7 @@
     d.aiReviewed = false
     d.aiPinned = false
     saveState()
+    syncPush('discussions', d)
     Util.showToast('答疑已删除')
     renderApp()
   }
@@ -1440,6 +1527,7 @@
     m.replied = true
     m.replyTime = Date.now()
     saveState()
+    syncPush('messages', m)
     hideModal()
     Util.showToast('回复成功', 'success')
     renderApp()
@@ -1450,6 +1538,7 @@
     if (!m) return
     m.status = 'approved'
     saveState()
+    syncPush('messages', m)
     Util.showToast('留言已通过', 'success')
     renderApp()
   }
@@ -1459,6 +1548,7 @@
     if (!m) return
     m.status = 'rejected'
     saveState()
+    syncPush('messages', m)
     Util.showToast('留言已拒绝')
     renderApp()
   }
@@ -1468,6 +1558,7 @@
     if (!p) return
     p.isTop = !p.isTop
     saveState()
+    syncPush('publishes', p)
     Util.showToast(p.isTop ? '已置顶' : '已取消置顶')
     renderApp()
   }
@@ -1478,6 +1569,7 @@
     if (!window.confirm('确认删除该发布内容？')) return
     state.publishes = state.publishes.filter(function (x) { return x.id !== id })
     saveState()
+    syncDelete('publishes', id)
     Util.showToast('已删除')
     renderApp()
   }
@@ -1485,6 +1577,7 @@
   function setStyle(val) {
     state.config.pageStyle = val
     saveState()
+    syncPush('course_config', Object.assign({ courseId: state.course.id }, state.config))
     applyPageStyle()
     renderApp()
   }
@@ -1492,6 +1585,7 @@
   function toggleConfig(key) {
     state.config[key] = !state.config[key]
     saveState()
+    syncPush('course_config', Object.assign({ courseId: state.course.id }, state.config))
     Util.showToast('配置已更新', 'success')
     renderApp()
   }
@@ -1620,10 +1714,16 @@
 
   // ========== 初始化 ==========
   function init() {
+    if (typeof Backend !== 'undefined' && Backend) Backend.init()
     loadState()
     bindEvents()
     applyPageStyle()
     renderApp()
+    // 已配置云端：拉取共享数据并开启实时同步
+    if (backendOn()) {
+      syncFromBackend()
+      startRealtime()
+    }
   }
 
   if (document.readyState === 'loading') {

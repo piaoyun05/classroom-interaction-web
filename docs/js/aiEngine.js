@@ -5,6 +5,43 @@
 
   var Util = global.Util
 
+  // ---------- 真实大模型（DeepSeek，兼容 OpenAI 接口） ----------
+  // 未配置 key 或调用失败返回 null，由调用方降级为本地模板
+  async function realAiCall(system, user) {
+    var c = (typeof global.APP_CONFIG === 'object' && global.APP_CONFIG) ? global.APP_CONFIG : null
+    if (!c || !c.DEEPSEEK_API_KEY) return null
+    try {
+      var controller = (typeof AbortController !== 'undefined') ? new AbortController() : null
+      var timer = null
+      if (controller) timer = setTimeout(function () { controller.abort() }, 30000)
+      var res = await fetch('https://api.deepseek.com/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + c.DEEPSEEK_API_KEY
+        },
+        body: JSON.stringify({
+          model: 'deepseek-chat',
+          messages: [
+            { role: 'system', content: system || '你是课堂互动助教，用简体中文、条理清晰、分步骤地解答学生的课程问题。' },
+            { role: 'user', content: user || '' }
+          ],
+          max_tokens: 800,
+          temperature: 0.7,
+          stream: false
+        }),
+        signal: controller ? controller.signal : undefined
+      })
+      if (timer) clearTimeout(timer)
+      if (!res.ok) return null
+      var data = await res.json()
+      var text = data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content
+      return (text && text.trim()) ? text.trim() : null
+    } catch (e) {
+      return null
+    }
+  }
+
   // AI 内容分类
   async function aiClassifyContent(content) {
     await Util.delay(600)
@@ -51,8 +88,22 @@
     return summary
   }
 
-  // AI 解答生成
+  // AI 解答生成（优先真实大模型，失败降级模板）
   async function aiAnswer(question, courseContext) {
+    var courseName = (typeof courseContext === 'string' && courseContext) ? courseContext : '本课程'
+    var real = await realAiCall(
+      '你是《' + courseName + '》的课程助教。请针对学生的提问给出准确、条理清晰、分步骤的解答；如果题目信息不足，请说明需要补充什么条件。',
+      '学生提问：' + question
+    )
+    if (real) {
+      return {
+        answer: real,
+        relatedTopics: [],
+        confidence: 1,
+        fromAI: true
+      }
+    }
+
     await Util.delay(1200)
 
     var answers = {
@@ -314,11 +365,26 @@
     return result
   }
 
-  // AI 全局问答
+  // AI 全局问答（优先真实大模型，失败降级模板）
   async function aiGlobalQA(question, courseData) {
-    await Util.delay(1000)
     var course = courseData.course || {}
     var courseName = course.name || '本课程'
+
+    var real = await realAiCall(
+      '你是《' + courseName + '》的课程助教，请结合课程知识点，用简体中文准确、清晰地回答学生的提问。',
+      '学生提问：' + (question || '')
+    )
+    if (real) {
+      return {
+        answer: real,
+        courseName: courseName,
+        sources: [],
+        relatedQuestions: [],
+        fromAI: true
+      }
+    }
+
+    await Util.delay(1000)
 
     var q = question || ''
     var answer = ''

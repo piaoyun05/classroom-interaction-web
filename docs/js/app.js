@@ -1711,6 +1711,11 @@
   }
 
   // ========== 初始化 ==========
+  function startBackendSync() {
+    if (!backendOn()) return
+    syncFromBackend()
+    startRealtime()
+  }
   function init() {
     if (typeof Backend !== 'undefined' && Backend) Backend.init()
     loadState()
@@ -1718,9 +1723,11 @@
     applyPageStyle()
     renderApp()
     // 已配置云端：拉取共享数据并开启实时同步
-    if (backendOn()) {
-      syncFromBackend()
-      startRealtime()
+    // CloudBase 匿名登录为异步，等 Backend.ready 就绪后再启用同步
+    if (typeof Backend !== 'undefined' && Backend && Backend.ready && typeof Backend.ready.then === 'function') {
+      Backend.ready.then(function () { startBackendSync() })
+    } else {
+      startBackendSync()
     }
   }
 

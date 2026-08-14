@@ -368,6 +368,10 @@
     var aiStatus = aiKey
       ? '<div class="config-desc">✅ AI key 已配置（本浏览器生效）</div>'
       : '<div class="config-desc">⚠️ 未配置，AI 使用内置模板回复</div>'
+    var rolePwd = Util.storage.get('web_role_pwd', '') || ''
+    var rolePwdStatus = rolePwd
+      ? '<div class="config-desc">✅ 切换视角密码已设置（本浏览器生效）</div>'
+      : '<div class="config-desc">⚠️ 未设置，切换视角无需密码</div>'
     return '<div class="page">' +
       '<div class="form-card card">' +
       '<div class="config-title">⚙️ 课程基础配置</div>' +
@@ -402,6 +406,13 @@
       '<button class="config-btn active" data-action="save-ai-key" style="flex:0 0 auto">保存</button>' +
       '</div>' +
       aiStatus +
+      '<div class="form-label">切换视角密码</div>' +
+      '<div class="config-desc">学生/教师视角相互切换时需验证。留空保存即清除密码。</div>' +
+      '<div class="config-row">' +
+      '<input id="role-pwd-input" class="form-input" type="password" placeholder="设置切换视角密码" style="flex:1;min-width:0"/>' +
+      '<button class="config-btn active" data-action="save-role-pwd" style="flex:0 0 auto">保存</button>' +
+      '</div>' +
+      rolePwdStatus +
       '</div></div>'
   }
 
@@ -904,9 +915,9 @@
       '<div class="menu-item" data-action="go-personal-study">🎯 个性化学习梳理<span class="menu-arrow">›</span></div>' +
       (isTeacher()
         ? '<div class="menu-item" data-action="open-weekly">📊 AI 教学周报<span class="menu-arrow">›</span></div>' +
-          '<div class="menu-item" data-action="toggle-role">🔄 切换为学生视角<span class="menu-arrow">›</span></div>' +
           '<div class="menu-item" data-action="reset-data">🗑️ 重置演示数据<span class="menu-arrow">›</span></div>'
         : '') +
+      '<div class="menu-item" data-action="toggle-role">🔄 切换为' + (isTeacher() ? '学生视角' : '教师视角') + '<span class="menu-arrow">›</span></div>' +
       '</div>' +
       '<div class="profile-footer">AI赋能课堂互动 · 网页演示版</div>' +
       '</div>'
@@ -1629,11 +1640,46 @@
     }
   }
 
+  // 切换视角（学生↔教师），若设置了密码则需验证
   function toggleRole() {
-    if (!isTeacher()) { Util.showToast('学生视角不可切换为教师'); return }
-    state.user = { name: '小明同学', role: 'student' }
+    var pwd = Util.storage.get('web_role_pwd', '') || ''
+    if (!pwd) { doToggleRole(); return }
+    var html =
+      '<div class="modal-title">🔒 切换视角</div>' +
+      '<div class="modal-sub">请输入切换视角密码（可在基础配置中修改）</div>' +
+      '<input id="toggle-pwd-input" class="form-input" type="password" placeholder="输入密码" style="width:100%;margin:12px 0"/>' +
+      '<div class="modal-actions">' +
+      '<button class="btn-primary modal-btn" data-action="confirm-toggle-role">确认切换</button>' +
+      '<button class="btn-ghost modal-btn" data-action="close-modal">取消</button>' +
+      '</div>'
+    showModal(html)
+  }
+
+  function confirmToggleRole() {
+    var input = document.getElementById('toggle-pwd-input')
+    var pwd = Util.storage.get('web_role_pwd', '') || ''
+    if (!input || input.value.trim() !== pwd) { Util.showToast('密码错误'); return }
+    hideModal()
+    doToggleRole()
+  }
+
+  function doToggleRole() {
+    var isT = isTeacher()
+    var newRole = isT ? 'student' : 'teacher'
+    var newName = state.user.name || '同学'
+    if (!isT && state.course && state.course.teacherName) newName = state.course.teacherName
+    state.user = { name: newName, role: newRole }
     saveState()
-    Util.showToast('已切换为学生视角', 'success')
+    Util.showToast('已切换为' + (newRole === 'teacher' ? '教师视角' : '学生视角'), 'success')
+    renderApp()
+  }
+
+  function saveRolePwd() {
+    var input = document.getElementById('role-pwd-input')
+    if (!input) return
+    var pwd = input.value.trim()
+    Util.storage.set('web_role_pwd', pwd)
+    Util.showToast(pwd ? '切换视角密码已保存' : '已清除切换视角密码', 'success')
     renderApp()
   }
 
@@ -1700,6 +1746,8 @@
       case 'set-style': setStyle(el.getAttribute('data-val')); break
       case 'toggle-config': toggleConfig(key); break
       case 'save-ai-key': saveAiKey(); break
+      case 'save-role-pwd': saveRolePwd(); break
+      case 'confirm-toggle-role': confirmToggleRole(); break
       case 'create-course': createCourse(); break
       case 'use-sample-course': useSampleCourse(); break
       case 'enter-course': navigate('#/'); break

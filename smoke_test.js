@@ -200,6 +200,8 @@ contentCheck(appEl._innerHTML, 'AI 答疑复核', '个人中心教师菜单')
 renderRoute('#/teacherConfig')
 contentCheck(appEl._innerHTML, 'AI 大模型配置', '配置页AI模型配置区块')
 contentCheck(appEl._innerHTML, 'ai-key-input', '配置页AI key输入框')
+contentCheck(appEl._innerHTML, '切换视角密码', '配置页切换视角密码设置')
+contentCheck(appEl._innerHTML, 'role-pwd-input', '配置页切换密码输入框')
 
 // 教师姓名字段
 renderRoute('#/createCourse')
@@ -226,9 +228,9 @@ contentCheck(appEl._innerHTML, '留言区', '底部Tab包含留言区')
 // 学生首页不显示 AI 教学周报入口
 renderRoute('#/')
 contentNotCheck(appEl._innerHTML, '查看本周 AI 教学周报', '学生首页不显示AI教学周报入口')
-// 学生「我的」不显示教师功能
+// 学生「我的」：显示切换教师视角入口（需密码），但不显示教师功能
 renderRoute('#/profile')
-contentNotCheck(appEl._innerHTML, '切换为教师视角', '学生我的不显示切换教师视角')
+contentCheck(appEl._innerHTML, '切换为教师视角', '学生我的显示切换教师视角入口')
 contentNotCheck(appEl._innerHTML, '重置演示数据', '学生我的不显示重置演示数据')
 contentNotCheck(appEl._innerHTML, 'AI 教学周报', '学生我的不显示AI教学周报')
 // 学生访问答疑复核应被重定向回首页

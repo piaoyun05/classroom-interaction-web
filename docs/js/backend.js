@@ -105,7 +105,8 @@
   function remove(table, id) {
     if (!enabled || !client) return Promise.resolve(false)
     var pk = TABLES[table].pk
-    return client.from(table).delete().eq(pk, id).then(function (r) {
+    var col = (TABLES[table].map && TABLES[table].map[pk]) || pk
+    return client.from(table).delete().eq(col, id).then(function (r) {
       if (r.error) { console.warn('[backend] remove', table, r.error.message); return false }
       return true
     }).catch(function (e) { console.warn('[backend] remove', table, e); return false })

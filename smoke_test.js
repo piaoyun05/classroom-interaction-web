@@ -53,7 +53,9 @@ let currentHash = '#/'
 const win = {
   location: {
     get hash() { return currentHash },
-    set hash(v) { currentHash = v }
+    set hash(v) { currentHash = v },
+    get href() { return 'https://piaoyun05.github.io/classroom-interaction-web/' + currentHash },
+    set href(v) { currentHash = v }
   },
   localStorage: localStorageMock,
   scrollTo: () => {},
@@ -71,7 +73,9 @@ const sandbox = {
   Math: Math,
   setTimeout: (fn) => { /* 不执行异步 */ },
   clearTimeout: () => {},
-  Promise: Promise
+  Promise: Promise,
+  btoa: (s) => Buffer.from(s, 'binary').toString('base64'),
+  atob: (s) => Buffer.from(s, 'base64').toString('binary')
 }
 sandbox.global = sandbox
 
@@ -107,7 +111,7 @@ function renderRoute(hash) {
 }
 
 const routes = [
-  '#/', '#/createCourse', '#/teacherConfig',
+  '#/', '#/createCourse', '#/courseCreated', '#/teacherConfig',
   '#/publish', '#/publishDetail/pub_1', '#/publishNew',
   '#/message', '#/messageNew',
   '#/discussion', '#/discussionDetail/disc_1', '#/discussionNew',
@@ -180,6 +184,23 @@ contentCheck(appEl._innerHTML, 'AI 内容智能总结', 'AI总结中心')
 
 renderRoute('#/profile')
 contentCheck(appEl._innerHTML, 'AI 答疑复核', '个人中心教师菜单')
+
+// 教师姓名字段
+renderRoute('#/createCourse')
+contentCheck(appEl._innerHTML, '教师姓名', '创建课程教师姓名字段')
+
+// 课程创建成功页 + 二维码
+renderRoute('#/courseCreated')
+contentCheck(appEl._innerHTML, '课程创建成功', '课程创建成功页')
+contentCheck(appEl._innerHTML, '授课教师', '二维码页教师信息')
+contentCheck(appEl._innerHTML, 'qrserver.com', '二维码图片')
+
+// 学生扫码视角
+const studentData = win.Util.b64Encode({ id: 'test', name: '测试课程', className: '测试班', semester: '2026', teacherName: '李老师', intro: '测试' })
+renderRoute('#/student?d=' + studentData)
+// initStudentView 调用 navigate('#/') 后 mock 不会自动触发 hashchange，手动渲染首页
+renderRoute('#/')
+contentCheck(appEl._innerHTML, '核心板块', '学生视角首页')
 
 console.log(`\n=== 结果: ${pass} 通过 / ${fail} 失败 ===`)
 process.exit(fail > 0 ? 1 : 0)

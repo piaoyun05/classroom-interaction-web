@@ -1615,3 +1615,77 @@ html, body {
 .app.compact .page {
   padding: 8px;
 }
+
+/* ========== 课程创建成功 & 二维码页 ========== */
+.qr-success-hero {
+  text-align: center;
+  padding: 30px 16px 16px;
+}
+.qr-success-icon {
+  font-size: 52px;
+  margin-bottom: 10px;
+}
+.qr-success-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 6px;
+}
+.qr-success-sub {
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+.qr-card {
+  text-align: center;
+  padding: 20px 16px;
+  margin-bottom: 16px;
+}
+.qr-course-name {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 8px;
+}
+.qr-course-info {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.8;
+  margin-bottom: 16px;
+}
+.qr-img-box {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 12px;
+}
+.qr-img {
+  width: 240px;
+  height: 240px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+}
+.qr-tip {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-bottom: 16px;
+}
+.qr-link-box {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.qr-link-input {
+  flex: 1;
+  font-size: 12px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.qr-copy-btn {
+  white-space: nowrap;
+  padding: 8px 14px;
+  font-size: 13px;
+}

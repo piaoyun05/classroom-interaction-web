@@ -127,6 +127,18 @@
     })
   }
 
+  // Unicode 安全的 base64 编解码（用于课程数据嵌入 URL）
+  function b64Encode(obj) {
+    return btoa(encodeURIComponent(JSON.stringify(obj)).replace(/%([0-9A-F]{2})/g, function (m, p1) {
+      return String.fromCharCode('0x' + p1)
+    }))
+  }
+  function b64Decode(str) {
+    return JSON.parse(decodeURIComponent(Array.prototype.map.call(atob(str), function (c) {
+      return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
+    }).join('')))
+  }
+
   // HTML 转义
   function escapeHtml(str) {
     if (!str) return ''
@@ -154,6 +166,8 @@
     storage: storage,
     escapeHtml: escapeHtml,
     nl2br: nl2br,
+    b64Encode: b64Encode,
+    b64Decode: b64Decode,
     CATEGORY_MAP: CATEGORY_MAP,
     DISCUSSION_CATEGORY_MAP: DISCUSSION_CATEGORY_MAP,
     MESSAGE_TYPE_MAP: MESSAGE_TYPE_MAP,

@@ -84,8 +84,20 @@
   // ========== 路由 ==========
   function parseRoute() {
     var hash = window.location.hash || '#/'
-    var parts = hash.replace(/^#\/?/, '').split('/')
-    return { page: parts[0] || 'home', id: parts[1] }
+    var raw = hash.replace(/^#\/?/, '')
+    var queryIdx = raw.indexOf('?')
+    var query = {}
+    var pathPart = raw
+    if (queryIdx !== -1) {
+      pathPart = raw.substring(0, queryIdx)
+      var qs = raw.substring(queryIdx + 1)
+      qs.split('&').forEach(function (pair) {
+        var kv = pair.split('=')
+        if (kv[0]) query[decodeURIComponent(kv[0])] = decodeURIComponent(kv[1] || '')
+      })
+    }
+    var parts = pathPart.split('/')
+    return { page: parts[0] || 'home', id: parts[1], query: query }
   }
 
   function isTabPage(page) {
@@ -100,7 +112,7 @@
   ]
 
   function activeTabKey(route) {
-    if (route.page === 'home' || route.page.indexOf('publish') === 0 || route.page.indexOf('message') === 0 || route.page === 'createCourse' || route.page === 'teacherConfig' || route.page === 'aiSummary' || route.page === 'personalStudy') return 'home'
+    if (route.page === 'home' || route.page.indexOf('publish') === 0 || route.page.indexOf('message') === 0 || route.page === 'createCourse' || route.page === 'courseCreated' || route.page === 'teacherConfig' || route.page === 'aiSummary' || route.page === 'personalStudy') return 'home'
     if (route.page === 'discussion' || route.page.indexOf('discussion') === 0 || route.page === 'review') return 'discussion'
     if (route.page === 'ai') return 'ai'
     if (route.page === 'profile') return 'profile'
@@ -111,6 +123,8 @@
   var PAGE_TITLES = {
     home: 'AI赋能课堂互动',
     createCourse: '创建课程小程序',
+    courseCreated: '课程创建成功',
+    student: '加入课程',
     teacherConfig: '教师基础配置',
     publish: '教师信息发布区',
     publishDetail: '内容详情',
@@ -262,12 +276,43 @@
       '<input id="course-class" class="form-input" placeholder="如：计科2401班" maxlength="20"/>' +
       '<div class="form-label">授课学期 <span class="form-required">*</span></div>' +
       '<input id="course-semester" class="form-input" placeholder="如：2025-2026学年第二学期" maxlength="30"/>' +
+      '<div class="form-label">教师姓名 <span class="form-required">*</span></div>' +
+      '<input id="course-teacher" class="form-input" placeholder="如：张教授" maxlength="20"/>' +
       '<div class="form-label">课程简介</div>' +
       '<textarea id="course-intro" class="form-textarea" style="min-height:80px" placeholder="简要介绍课程内容与学习目标"></textarea>' +
       '<div class="form-ai-hint">✨ 创建后你将拥有课程管理权限（发布/审核/置顶/配置）</div>' +
       '<button class="btn-primary" data-action="create-course">创 建 课 程</button>' +
       '<button class="btn-ghost" data-action="use-sample-course">使用示例课程快速体验</button>' +
       '</div></div>'
+  }
+
+  function renderCourseCreated() {
+    var c = state.course
+    var data = Util.b64Encode({ id: c.id, name: c.name, className: c.className, semester: c.semester, teacherName: c.teacherName, intro: c.intro })
+    var baseUrl = window.location.href.split('#')[0]
+    var studentUrl = baseUrl + '#/student?d=' + data
+    var qrSrc = 'https://api.qrserver.com/v1/create-qr-code/?size=240x240&margin=8&data=' + encodeURIComponent(studentUrl)
+    return '<div class="page">' +
+      '<div class="qr-success-hero">' +
+      '<div class="qr-success-icon">✅</div>' +
+      '<div class="qr-success-title">课程创建成功！</div>' +
+      '<div class="qr-success-sub">学生扫描下方二维码即可加入课程</div>' +
+      '</div>' +
+      '<div class="card qr-card">' +
+      '<div class="qr-course-name">📚 ' + Util.escapeHtml(c.name) + '</div>' +
+      '<div class="qr-course-info">' +
+      '<div>🏫 ' + Util.escapeHtml(c.className) + ' · ' + Util.escapeHtml(c.semester) + '</div>' +
+      '<div>👨‍🏫 授课教师：' + Util.escapeHtml(c.teacherName) + '</div>' +
+      '</div>' +
+      '<div class="qr-img-box"><img class="qr-img" src="' + qrSrc + '" alt="课程二维码"/></div>' +
+      '<div class="qr-tip">📱 学生用手机扫码即可进入学生视角</div>' +
+      '<div class="qr-link-box">' +
+      '<input id="student-url" class="qr-link-input" value="' + Util.escapeHtml(studentUrl) + '" readonly/>' +
+      '<button class="btn-primary qr-copy-btn" data-action="copy-student-url">复制链接</button>' +
+      '</div>' +
+      '</div>' +
+      '<button class="btn-primary" data-action="enter-course">进入课程首页 →</button>' +
+      '</div>'
   }
 
   function renderTeacherConfig() {
@@ -280,6 +325,7 @@
       '<div class="config-info">' +
       '<div>📚 ' + Util.escapeHtml(state.course.name) + '</div>' +
       '<div>🏫 ' + Util.escapeHtml(state.course.className) + ' · ' + Util.escapeHtml(state.course.semester) + '</div>' +
+      '<div>👨‍🏫 ' + Util.escapeHtml(state.course.teacherName || '未设置') + '</div>' +
       '</div>' +
       '<div class="form-label">页面展示样式</div>' +
       '<div class="config-row">' +
@@ -780,7 +826,8 @@
     var myPosts = state.discussions.filter(function (d) { return d.author === u.name }).length
     var roleLabel = u.role === 'teacher' ? '教师 · 超级管理员' : '学生'
     var teacherMenu = isTeacher()
-      ? '<div class="menu-item" data-action="go-teacher-config">⚙️ 课程基础配置<span class="menu-arrow">›</span></div>' +
+      ? '<div class="menu-item" data-action="go-share-qr">📱 分享课程二维码<span class="menu-arrow">›</span></div>' +
+        '<div class="menu-item" data-action="go-teacher-config">⚙️ 课程基础配置<span class="menu-arrow">›</span></div>' +
         '<div class="menu-item" data-action="go-review">🛡️ AI 答疑复核<span class="menu-arrow">›</span></div>' +
         '<div class="menu-item" data-action="open-daily">📅 AI 每日日报<span class="menu-arrow">›</span></div>'
       : ''
@@ -860,8 +907,8 @@
     var content = ''
     var page = route.page
 
-    // 未创建课程时强制进入创建页（允许停留在创建页本身）
-    if (!state.course && page !== 'createCourse') {
+    // 未创建课程时强制进入创建页（允许停留在创建页和扫码加入页）
+    if (!state.course && page !== 'createCourse' && page !== 'student') {
       content = renderCreateCourse()
       app.innerHTML = renderHeader({ page: 'createCourse' }) + content + renderTabBar({ page: 'createCourse' })
       window.scrollTo(0, 0)
@@ -870,6 +917,8 @@
 
     if (page === '' || page === 'home') content = renderHome()
     else if (page === 'createCourse') content = renderCreateCourse()
+    else if (page === 'courseCreated') content = renderCourseCreated()
+    else if (page === 'student') { initStudentView(route.query.d); return }
     else if (page === 'teacherConfig') content = renderTeacherConfig()
     else if (page === 'publish') content = renderPublishList()
     else if (page === 'publishDetail') content = renderPublishDetail(route.id)
@@ -919,35 +968,72 @@
     var name = document.getElementById('course-name').value.trim()
     var className = document.getElementById('course-class').value.trim()
     var semester = document.getElementById('course-semester').value.trim()
+    var teacher = document.getElementById('course-teacher').value.trim()
     var intro = document.getElementById('course-intro').value.trim()
     if (!name) { Util.showToast('请输入课程名称'); return }
     if (!className) { Util.showToast('请输入授课班级'); return }
     if (!semester) { Util.showToast('请输入授课学期'); return }
+    if (!teacher) { Util.showToast('请输入教师姓名'); return }
 
     state.course = {
       id: Util.genId(),
       name: name,
       className: className,
       semester: semester,
+      teacherName: teacher,
       intro: intro || '暂无课程简介',
-      teacherName: '张教授',
       createdAt: Date.now()
     }
     state.user.role = 'teacher'
-    state.user.name = '张教授'
+    state.user.name = teacher
     saveState()
     Util.showToast('课程小程序创建成功', 'success')
-    navigate('#/')
+    navigate('#/courseCreated')
   }
 
   function useSampleCourse() {
     var mock = global.MockData
     state.course = JSON.parse(JSON.stringify(mock.course))
     state.user.role = 'teacher'
-    state.user.name = '张教授'
+    state.user.name = mock.course.teacherName || '张教授'
     saveState()
     Util.showToast('已加载示例课程', 'success')
-    navigate('#/')
+    navigate('#/courseCreated')
+  }
+
+  function initStudentView(data) {
+    try {
+      var course = Util.b64Decode(data)
+      var mock = global.MockData
+      state.course = course
+      state.user = { name: '同学', role: 'student' }
+      // 加载示例内容供学生浏览
+      state.publishes = JSON.parse(JSON.stringify(mock.publishes))
+      state.messages = JSON.parse(JSON.stringify(mock.messages))
+      state.discussions = JSON.parse(JSON.stringify(mock.discussions))
+      state.dailyDiscussion = JSON.parse(JSON.stringify(mock.dailyDiscussion))
+      state.aiHistory = []
+      saveState()
+      Util.showToast('已加入「' + course.name + '」', 'success')
+      navigate('#/')
+    } catch (e) {
+      var app = document.getElementById('app')
+      app.innerHTML = renderHeader({ page: 'home' }) +
+        '<div class="page"><div class="card"><div class="empty">⚠️ 二维码数据无效，请重新扫码</div></div></div>' +
+        renderTabBar({ page: 'home' })
+    }
+  }
+
+  function copyStudentUrl() {
+    var input = document.getElementById('student-url')
+    if (!input) return
+    input.select()
+    try {
+      document.execCommand('copy')
+      Util.showToast('链接已复制到剪贴板', 'success')
+    } catch (e) {
+      Util.showToast('复制失败，请手动选择复制')
+    }
   }
 
   function pickPublishCat(key) {
@@ -1497,6 +1583,9 @@
       case 'toggle-config': toggleConfig(key); break
       case 'create-course': createCourse(); break
       case 'use-sample-course': useSampleCourse(); break
+      case 'enter-course': navigate('#/'); break
+      case 'copy-student-url': copyStudentUrl(); break
+      case 'go-share-qr': navigate('#/courseCreated'); break
       case 'toggle-role': toggleRole(); break
       case 'reset-data': resetData(); break
       case 'close-modal': hideModal(); break

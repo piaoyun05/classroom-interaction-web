@@ -92,6 +92,8 @@ loadScript('js/util.js')
 loadScript('js/data.js')
 loadScript('js/aiEngine.js')
 loadScript('js/config.js')
+// 冒烟测试强制走本地模式：覆盖 config 中的真实 token，避免发起真实网络请求
+win.APP_CONFIG = { GITHUB_TOKEN: '' }
 loadScript('js/backend.js')
 
 // 先设置课程，让首页可完整渲染

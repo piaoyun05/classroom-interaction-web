@@ -741,7 +741,7 @@
   function renderMessageList() {
     var summary = aiMessageSummary
     var summaryCard = ''
-    if (summary) {
+    if (summary && isTeacher()) {
       summaryCard = '<div class="ai-summary-card">' +
         '<div class="ai-summary-header"><span>🤖 AI 问题汇总表</span><span class="ai-summary-close" data-action="close-ai-summary">✕</span></div>' +
         '<div class="ai-summary-text">' + Util.escapeHtml(summary.summary) + '</div>' +
@@ -772,14 +772,19 @@
       ? '<div class="review-tip">🔔 留言审核已开启，共 ' + state.messages.filter(function (m) { return m.status === 'pending' }).length + ' 条待审核</div>'
       : ''
 
+    // AI 问题汇总表入口仅教师可见可用（学生视角禁用）
+    var summaryEntry = isTeacher()
+      ? '<div class="ai-summary-entry" data-action="ai-message-summary">' +
+        '<span class="ai-entry-icon">🤖</span>' +
+        '<div class="ai-entry-body"><div class="ai-entry-title">AI 问题汇总表</div>' +
+        '<div class="ai-entry-desc">智能梳理 ' + state.messages.length + ' 条留言，' + unrepliedCountNow() + ' 条待回复</div></div>' +
+        '<span class="ai-entry-arrow">›</span>' +
+        '</div>'
+      : ''
+
     return '<div class="page">' +
       reviewTip +
-      '<div class="ai-summary-entry" data-action="ai-message-summary">' +
-      '<span class="ai-entry-icon">🤖</span>' +
-      '<div class="ai-entry-body"><div class="ai-entry-title">AI 问题汇总表</div>' +
-      '<div class="ai-entry-desc">智能梳理 ' + state.messages.length + ' 条留言，' + unrepliedCountNow() + ' 条待回复</div></div>' +
-      '<span class="ai-entry-arrow">›</span>' +
-      '</div>' +
+      summaryEntry +
       summaryCard +
       '<div class="list-area">' + listHtml + '</div>' +
       '</div>'
@@ -866,6 +871,7 @@
 
     var aiBlock = ''
     if (d.aiAnswer) {
+      // 已有 AI 解答：教师/学生都可查看
       aiBlock = '<div class="ai-answer-card">' +
         '<div class="ai-answer-header"><span>🤖 AI 智能解答' + (d.aiPinned ? ' ⭐' : '') + (d.aiReviewed ? ' · 教师已复核' : '') + '</span>' +
         '<span class="ai-answer-time">' + Util.timeAgo(d.aiAnswerTime) + '</span></div>' +
@@ -873,11 +879,12 @@
         (isTeacher() ? '<div class="ai-admin-actions"><button class="btn-sm" data-action="review-ai" data-id="' + d.id + '">✏️ 复核/修改</button>' +
           '<button class="btn-sm" data-action="pin-ai" data-id="' + d.id + '">' + (d.aiPinned ? '取消置顶' : '置顶答疑') + '</button></div>' : '') +
         '</div>'
-    } else if (state.config.aiAnswerEnabled) {
+    } else if (isTeacher() && state.config.aiAnswerEnabled) {
+      // AI 一键解答仅教师可见可用（学生视角禁用）
       aiBlock = '<button class="btn-ai" id="ai-answer-btn" data-action="ai-answer" data-id="' + d.id + '">' +
         '<span class="btn-ai-icon">🤖</span> AI 一键解答</button>' +
         '<div id="ai-loading" class="ai-loading" style="display:none">AI 思考中<span class="dots">…</span></div>'
-    } else {
+    } else if (isTeacher()) {
       aiBlock = '<div class="ai-off-tip">🤖 AI 答疑已由教师关闭</div>'
     }
 
@@ -936,9 +943,12 @@
       return '<div class="quick-item" data-action="quick-ask" data-q="' + Util.escapeHtml(q) + '">' + Util.escapeHtml(q) + '</div>'
     }).join('')
 
+    // 每次问答以条目形式显示，标题即问题本身
     var chatHtml = state.aiHistory.map(function (h) {
-      return '<div class="chat-item chat-ask"><div class="chat-bubble bubble-ask">' + Util.escapeHtml(h.question) + '</div></div>' +
-        '<div class="chat-item chat-answer"><div class="chat-bubble bubble-answer">' + Util.nl2br(h.answer) + '</div></div>'
+      return '<div class="qa-card card">' +
+        '<div class="qa-title">❓ ' + Util.escapeHtml(h.question) + '</div>' +
+        '<div class="qa-answer">' + Util.nl2br(h.answer) + '</div>' +
+        '</div>'
     }).join('')
 
     if (!chatHtml) {
@@ -1475,6 +1485,8 @@
   }
 
   async function aiAnswer(id) {
+    // AI 一键解答仅教师可用
+    if (!isTeacher()) { Util.showToast('AI 一键解答仅教师可用'); return }
     var d = state.discussions.find(function (x) { return x.id === id })
     if (!d) return
     var btn = document.getElementById('ai-answer-btn')
@@ -1493,6 +1505,8 @@
   }
 
   async function aiMessageSummary() {
+    // AI 问题汇总仅教师可用
+    if (!isTeacher()) { Util.showToast('AI 问题汇总仅教师可用'); return }
     Util.showToast('AI 正在分析留言…')
     aiMessageSummary = await AIEngine.aiSummarizeMessages(state.messages)
     var unsolved = await AIEngine.aiUnsolvedList(state.messages)

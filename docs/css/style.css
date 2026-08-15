@@ -795,6 +795,29 @@ html, body {
   display: flex;
 }
 
+/* AI 问答条目卡片：每次问答一条，标题即问题本身 */
+.qa-card {
+  padding-top: 10px;
+}
+
+.qa-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  padding-bottom: 8px;
+  border-bottom: 1px dashed var(--border);
+  margin-bottom: 8px;
+  line-height: 1.5;
+}
+
+.qa-answer {
+  font-size: 14px;
+  line-height: 1.8;
+  color: var(--text);
+  white-space: pre-line;
+  word-break: break-word;
+}
+
 .chat-ask {
   justify-content: flex-end;
 }

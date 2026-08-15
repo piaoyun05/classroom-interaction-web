@@ -50,10 +50,11 @@ html, body {
   z-index: 100;
   display: flex;
   align-items: center;
-  height: 48px;
-  padding: 0 12px;
-  background: var(--card-bg);
-  border-bottom: 1px solid var(--border);
+  height: 52px;
+  padding: 0 14px;
+  background: linear-gradient(135deg, #eef2ff 0%, #ece4ff 50%, #f4eaff 100%);
+  border-bottom: 1px solid rgba(74, 124, 255, 0.12);
+  box-shadow: 0 2px 12px rgba(99, 102, 241, 0.08);
 }
 
 .header-back {
@@ -66,6 +67,11 @@ html, body {
   cursor: pointer;
   flex-shrink: 0;
   margin-right: 4px;
+  border-radius: 10px;
+  transition: background 0.2s;
+}
+.header-back:active {
+  background: rgba(74, 124, 255, 0.12);
 }
 
 .header-title {
@@ -76,6 +82,8 @@ html, body {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  color: var(--text);
+  letter-spacing: 0.5px;
 }
 
 .header-action {
@@ -84,7 +92,12 @@ html, body {
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
-  padding: 6px 4px;
+  padding: 6px 10px;
+  border-radius: 10px;
+  transition: background 0.2s;
+}
+.header-action:active {
+  background: rgba(74, 124, 255, 0.12);
 }
 
 /* ========== 底部 TabBar ========== */

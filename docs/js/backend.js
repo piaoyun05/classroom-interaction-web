@@ -33,6 +33,11 @@
       pk: 'courseId',
       courseField: 'courseId',
       map: { courseId: 'course_id', pageStyle: 'page_style', messageReviewEnabled: 'message_review_enabled', discussionPostEnabled: 'discussion_post_enabled', aiAnswerEnabled: 'ai_answer_enabled' }
+    },
+    app_config: {
+      pk: 'id',
+      courseField: null,
+      map: { id: 'id', aiKey: 'ai_key' }
     }
   }
 
@@ -174,6 +179,15 @@
     })
   }
 
+  // 读取全局配置（如云端共享的 AI key）：id='global'
+  function loadAppConfig() {
+    if (!enabled || !client) return Promise.resolve(null)
+    return client.from('app_config').select('*').eq('id', 'global').single().then(function (r) {
+      if (r.error || !r.data) return null
+      return fromDb('app_config', r.data)
+    }).catch(function () { return null })
+  }
+
   function unsubscribe() {
     if (client && channel) { client.removeChannel(channel); channel = null }
   }
@@ -186,6 +200,7 @@
     loadCourse: loadCourse,
     loadAll: loadAll,
     loadGist: loadAll, // 兼容 app.js 的学生视角调用
+    loadAppConfig: loadAppConfig,
     subscribe: subscribe,
     unsubscribe: unsubscribe
   }

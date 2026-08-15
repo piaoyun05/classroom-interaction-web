@@ -1746,8 +1746,27 @@
     var key = input.value.trim()
     if (!key) { Util.showToast('请输入 DeepSeek API key'); return }
     Util.storage.set('web_ai_key', key)
-    Util.showToast('AI key 已保存到本浏览器', 'success')
+    // 上传云端（app_config 单行 global），学生端可自动获取并使用真实 AI
+    if (backendOn()) {
+      Backend.upsert('app_config', { id: 'global', aiKey: key }).then(function (ok) {
+        Util.showToast(ok ? 'AI key 已保存并同步云端' : 'AI key 已保存（云端同步失败）', ok ? 'success' : '')
+      })
+    } else {
+      Util.showToast('AI key 已保存到本浏览器', 'success')
+    }
     renderApp()
+  }
+
+  // 从云端拉取共享 AI key 写入本地，供学生端直接使用真实 AI
+  function syncAiKeyFromCloud() {
+    if (!backendOn() || !Backend.loadAppConfig) return
+    Backend.loadAppConfig().then(function (cfg) {
+      if (!cfg || !cfg.aiKey) return
+      var local = Util.storage.get('web_ai_key', '') || ''
+      if (!local) {
+        Util.storage.set('web_ai_key', cfg.aiKey)
+      }
+    })
   }
 
   function setStyle(val) {
@@ -1959,6 +1978,7 @@
   // ========== 初始化 ==========
   function startBackendSync() {
     if (!backendOn()) return
+    syncAiKeyFromCloud()
     syncFromBackend()
     startRealtime()
   }

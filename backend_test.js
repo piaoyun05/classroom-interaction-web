@@ -36,7 +36,7 @@ function tableApi(name) {
       } else {
         data = Object.values(rows)
       }
-      if (name === 'courses' && api._singleExpected) data = data[0] || null
+      if (api._singleExpected) data = data[0] || null
       return Promise.resolve(cb({ data, error: null }))
     }
   }
@@ -107,6 +107,15 @@ B.upsert('discussions', { id: 'd1', author: '陈同学', title: '测试帖', con
   B.subscribe('course_x', () => {})
   ck(realtimeEvents.length === 5, 'subscribe 为 5 张表注册了实时监听')
   ck(realtimeEvents.some(e => e.cfg.table === 'discussions' && /course_id=eq\.course_x/.test(e.cfg.filter)), 'discussions 监听带 course_id 过滤')
+
+  // app_config（全局 AI key）读写
+  return B.upsert('app_config', { id: 'global', aiKey: 'sk-test-cloud-key' })
+}).then(ok => {
+  ck(ok === true, 'app_config 写入成功')
+  ck(store.app_config && store.app_config['global'] && store.app_config['global'].ai_key === 'sk-test-cloud-key', 'app_config aiKey -> ai_key 映射正确')
+  return B.loadAppConfig()
+}).then(cfg => {
+  ck(cfg && cfg.aiKey === 'sk-test-cloud-key', 'loadAppConfig 反向映射读取到 aiKey')
 
   // remove
   return B.remove('discussions', 'd1')

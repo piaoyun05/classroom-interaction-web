@@ -75,12 +75,20 @@ create table if not exists course_config (
   ai_answer_enabled boolean
 );
 
+-- 全局应用配置表（单行：id='global'）
+-- 用于存共享的 DeepSeek API key，学生端可读取后直接使用真实 AI
+create table if not exists app_config (
+  id text primary key,
+  ai_key text
+);
+
 -- 开启实时推送（Realtime），供网页端实时同步
 alter publication supabase_realtime add table courses;
 alter publication supabase_realtime add table publishes;
 alter publication supabase_realtime add table messages;
 alter publication supabase_realtime add table discussions;
 alter publication supabase_realtime add table course_config;
+alter publication supabase_realtime add table app_config;
 
 -- ============================================================
 -- 宽松 RLS：所有用户可读可写（课堂演示用）
@@ -90,12 +98,13 @@ alter table publishes enable row level security;
 alter table messages enable row level security;
 alter table discussions enable row level security;
 alter table course_config enable row level security;
+alter table app_config enable row level security;
 
 do $$
 declare
   t text;
 begin
-  foreach t in array array['courses','publishes','messages','discussions','course_config']
+  foreach t in array array['courses','publishes','messages','discussions','course_config','app_config']
   loop
     execute format('create policy "public_select_%s" on %I for select using (true);', t, t);
     execute format('create policy "public_insert_%s" on %I for insert with check (true);', t, t);

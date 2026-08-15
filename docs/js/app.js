@@ -471,6 +471,9 @@
     var images = (m.images || []).map(function (img) {
       return '<img class="msg-img" src="' + img + '" alt="留言图片" data-action="view-image" data-src="' + img + '"/>'
     }).join('')
+    var delBtn = isTeacher()
+      ? '<div class="reply-actions"><button class="btn-reject" data-action="delete-message" data-id="' + m.id + '">🗑️ 删除</button></div>'
+      : ''
     return '<div class="card msg-card">' +
       '<div class="card-top">' + tag + status + '<span class="card-time">' + Util.timeAgo(m.createTime) + '</span></div>' +
       '<div class="msg-name">' + (m.isAnonymous ? '🕶 匿名同学' : Util.escapeHtml(m.studentName)) + '</div>' +
@@ -478,6 +481,7 @@
       images +
       replied +
       reviewBtns +
+      delBtn +
       '</div>'
   }
 
@@ -489,6 +493,9 @@
     var imgs = (d.images || []).map(function (img) {
       return '<img class="msg-img msg-img-sm" src="' + img + '" alt="讨论图片" data-action="view-image" data-src="' + img + '"/>'
     }).join('')
+    var adminBtns = isTeacher()
+      ? '<span class="pub-admin pub-del" data-action="delete-discussion" data-id="' + d.id + '">删除</span>'
+      : ''
     return '<div class="card disc-card" data-action="open-discussion-detail" data-id="' + d.id + '">' +
       '<div class="card-top">' + tag + top + aiBadge + hot + '<span class="card-time">' + Util.timeAgo(d.createTime) + '</span></div>' +
       '<h3 class="card-title">' + Util.escapeHtml(d.title) + '</h3>' +
@@ -498,6 +505,7 @@
       '<span>👤 ' + Util.escapeHtml(d.author) + '</span>' +
       '<span>👍 ' + d.likes + '</span>' +
       '<span>💬 ' + (d.comments || []).length + '</span>' +
+      adminBtns +
       '</div></div>'
   }
 
@@ -1004,6 +1012,7 @@
       }).join('') + '</div>' +
       '<div class="detail-actions">' +
       '<div class="detail-like' + likeClass + '" data-action="like-discussion" data-id="' + d.id + '">👍 ' + likeText + ' (' + d.likes + ')</div>' +
+      (isTeacher() ? '<div class="detail-del" data-action="delete-discussion" data-id="' + d.id + '">🗑️ 删除</div>' : '') +
       '</div>' +
       '</div>' +
 
@@ -1977,6 +1986,30 @@
     renderApp()
   }
 
+  function deleteDiscussion(id) {
+    if (!isTeacher()) { Util.showToast('仅教师可删除'); return }
+    var d = state.discussions.find(function (x) { return x.id === id })
+    if (!d) return
+    if (!window.confirm('确认删除该讨论帖？')) return
+    state.discussions = state.discussions.filter(function (x) { return x.id !== id })
+    saveState()
+    syncDelete('discussions', id)
+    Util.showToast('已删除')
+    renderApp()
+  }
+
+  function deleteMessage(id) {
+    if (!isTeacher()) { Util.showToast('仅教师可删除'); return }
+    var m = state.messages.find(function (x) { return x.id === id })
+    if (!m) return
+    if (!window.confirm('确认删除该留言？')) return
+    state.messages = state.messages.filter(function (x) { return x.id !== id })
+    saveState()
+    syncDelete('messages', id)
+    Util.showToast('已删除')
+    renderApp()
+  }
+
   function saveAiKey() {
     var input = document.getElementById('ai-key-input')
     if (!input) return
@@ -2153,6 +2186,8 @@
         renderApp(); break
       case 'toggle-publish-top': togglePublishTop(id); break
       case 'delete-publish': deletePublish(id); break
+      case 'delete-discussion': deleteDiscussion(id); break
+      case 'delete-message': deleteMessage(id); break
       case 'submit-publish': submitPublish(); break
       case 'submit-message': submitMessage(); break
       case 'submit-discussion': submitDiscussion(); break

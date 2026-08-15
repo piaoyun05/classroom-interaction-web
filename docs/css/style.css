@@ -178,6 +178,29 @@ html, body {
   color: var(--text-secondary);
 }
 
+/* 管理操作（删除等） */
+.pub-admin {
+  color: var(--primary);
+  cursor: pointer;
+}
+.pub-admin.pub-del {
+  color: #e11d48;
+}
+.detail-del {
+  display: inline-flex;
+  align-items: center;
+  background: #fff1f2;
+  color: #e11d48;
+  border-radius: 16px;
+  padding: 5px 12px;
+  font-size: 13px;
+  cursor: pointer;
+}
+.card-meta .pub-admin,
+.card-meta .pub-del {
+  margin-left: auto;
+}
+
 /* 标签 */
 .tag {
   display: inline-block;

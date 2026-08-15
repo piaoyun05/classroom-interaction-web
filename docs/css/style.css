@@ -678,6 +678,31 @@ html, body {
   background: var(--bg);
 }
 
+/* 评论实名/匿名切换区 */
+.comment-input-area {
+  padding-top: 4px;
+}
+.comment-mode-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.comment-mode-row .form-tags {
+  margin: 0;
+}
+.comment-name-input {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 8px 12px;
+  font-size: 13px;
+  outline: none;
+  background: var(--card-bg);
+  box-sizing: border-box;
+  margin-bottom: 4px;
+}
+
 .comment-input {
   flex: 1;
   border: 1px solid var(--border);

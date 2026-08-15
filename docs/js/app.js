@@ -1022,9 +1022,20 @@
       '<div class="comments-list">' + commentsHtml + '</div>' +
 
       replyHint +
+      '<div class="comment-input-area">' +
+      '<div class="comment-mode-row">' +
+      '<div class="form-label" style="margin:0;font-size:12px">身份</div>' +
+      '<div class="form-tags" style="flex:1">' +
+      '<div class="form-tag' + (formState.commentMode !== 'anon' ? ' active' : '') + '" data-action="pick-comment-mode" data-key="real">实名</div>' +
+      '<div class="form-tag' + (formState.commentMode === 'anon' ? ' active' : '') + '" data-action="pick-comment-mode" data-key="anon">匿名</div>' +
+      '</div></div>' +
+      (formState.commentMode !== 'anon'
+        ? '<input id="comment-name" class="comment-name-input" placeholder="请输入你的真实姓名" maxlength="20"/>'
+        : '') +
       '<div class="comment-input-bar">' +
       '<input id="comment-input" class="comment-input" data-id="' + d.id + '" placeholder="写下你的评论…" maxlength="200"/>' +
       '<button class="btn-comment" data-action="add-comment" data-id="' + d.id + '">发送</button>' +
+      '</div>' +
       '</div>' +
       '</div>'
   }
@@ -1226,6 +1237,7 @@
     discCat: 'question',
     msgMode: 'real',
     discMode: 'real',
+    commentMode: 'real',
     msgImages: [],
     discImages: [],
     pubImages: [],
@@ -1429,6 +1441,17 @@
   function pickMsgMode(key) {
     formState.msgMode = key
     renderApp()
+  }
+
+  function pickCommentMode(key) {
+    formState.commentMode = key
+    // 局部更新：切换实名/匿名标签高亮 + 显示/隐藏姓名输入框，避免丢失已输入评论
+    var tags = document.querySelectorAll('.form-tag[data-action="pick-comment-mode"]')
+    tags.forEach(function (t) {
+      t.classList.toggle('active', t.getAttribute('data-key') === key)
+    })
+    var nameInput = document.getElementById('comment-name')
+    if (nameInput) nameInput.style.display = key === 'anon' ? 'none' : ''
   }
 
   function pickDiscMode(key) {
@@ -1699,9 +1722,17 @@
     if (!input) return
     var content = input.value.trim()
     if (!content) { Util.showToast('请输入评论内容'); return }
+    // 实名/匿名：实名需输入姓名，匿名使用占位名
+    var author = '匿名同学'
+    if (formState.commentMode !== 'anon') {
+      var nameInput = document.getElementById('comment-name')
+      var realName = nameInput ? nameInput.value.trim() : ''
+      if (!realName) { Util.showToast('请输入你的真实姓名'); return }
+      author = realName
+    }
     var d = state.discussions.find(function (x) { return x.id === id })
     if (!d) return
-    var comment = { author: state.user.name, content: content, createTime: Date.now() }
+    var comment = { author: author, content: content, createTime: Date.now() }
     if (pendingReplyAuthor) {
       comment.replyTo = pendingReplyAuthor
       pendingReplyAuthor = null
@@ -2169,6 +2200,7 @@
       case 'pick-publish-type': pickPublishType(key); break
       case 'pick-msg-type': pickMsgType(key); break
       case 'pick-msg-mode': pickMsgMode(key); break
+      case 'pick-comment-mode': pickCommentMode(key); break
       case 'pick-disc-cat': pickDiscCat(key); break
       case 'pick-disc-mode': pickDiscMode(key); break
       case 'msg-img-pick': pickMsgImage(); break

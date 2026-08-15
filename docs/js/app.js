@@ -360,6 +360,47 @@
     })
   }
 
+  // 读取图片文件并压缩为 dataURL（限制尺寸与体积，避免撑爆 localStorage/云端）
+  function compressImageFile(file, maxW, quality) {
+    return new Promise(function (resolve, reject) {
+      var reader = new FileReader()
+      reader.onerror = function () { reject(new Error('读取文件失败')) }
+      reader.onload = function (e) {
+        var img = new Image()
+        img.onerror = function () { reject(new Error('图片解析失败')) }
+        img.onload = function () {
+          var w = img.width
+          var h = img.height
+          var scale = Math.min(1, maxW / w)
+          var canvas = document.createElement('canvas')
+          canvas.width = Math.round(w * scale)
+          canvas.height = Math.round(h * scale)
+          canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height)
+          resolve(canvas.toDataURL('image/jpeg', quality))
+        }
+        img.src = e.target.result
+      }
+      reader.readAsDataURL(file)
+    })
+  }
+
+  // 表单图片选择区：已选图片缩略图 + 上传按钮
+  function renderImagePicker(list, actionPrefix, maxCount) {
+    var html = ''
+    if (list && list.length) {
+      html = '<div class="img-picker-preview">' + list.map(function (src, i) {
+        return '<div class="img-picker-item"><img src="' + src + '" alt="已选图片"/>' +
+          '<span class="img-picker-del" data-action="' + actionPrefix + '-remove" data-id="' + i + '">✕</span></div>'
+      }).join('') + '</div>'
+    }
+    var canAdd = !list || list.length < maxCount
+    html += '<div class="img-picker-row">' +
+      (canAdd ? '<button type="button" class="btn-ghost img-picker-btn" data-action="' + actionPrefix + '-pick">📷 上传图片' +
+        (maxCount > 1 ? '（' + (list ? list.length : 0) + '/' + maxCount + '）' : '') + '</button>' : '') +
+      '</div>'
+    return html
+  }
+
   function renderTag(catMap, key) {
     var item = catMap[key]
     // 兜底：未匹配 key、key 为空/对象格式缺失时，显示安全文本
@@ -409,7 +450,7 @@
         : '<div class="reply-pending">⏳ 待教师回复</div>'
     }
     var images = (m.images || []).map(function (img) {
-      return '<img class="msg-img" src="' + Util.escapeHtml(img) + '" alt="留言图片"/>'
+      return '<img class="msg-img" src="' + img + '" alt="留言图片" data-action="view-image" data-src="' + img + '"/>'
     }).join('')
     return '<div class="card msg-card">' +
       '<div class="card-top">' + tag + status + '<span class="card-time">' + Util.timeAgo(m.createTime) + '</span></div>' +
@@ -426,10 +467,14 @@
     var aiBadge = d.aiAnswer ? '<span class="badge-ai">🤖 已解答</span>' : ''
     var hot = (d.aiAnswer && d.likes > 10) ? '<span class="badge-hot">🔥 高频</span>' : ''
     var top = d.isTop ? '<span class="badge-top">置顶</span>' : ''
+    var imgs = (d.images || []).map(function (img) {
+      return '<img class="msg-img msg-img-sm" src="' + img + '" alt="讨论图片" data-action="view-image" data-src="' + img + '"/>'
+    }).join('')
     return '<div class="card disc-card" data-action="open-discussion-detail" data-id="' + d.id + '">' +
       '<div class="card-top">' + tag + top + aiBadge + hot + '<span class="card-time">' + Util.timeAgo(d.createTime) + '</span></div>' +
       '<h3 class="card-title">' + Util.escapeHtml(d.title) + '</h3>' +
       '<p class="card-summary">' + Util.escapeHtml(d.content) + '</p>' +
+      imgs +
       '<div class="card-meta">' +
       '<span>👤 ' + Util.escapeHtml(d.author) + '</span>' +
       '<span>👍 ' + d.likes + '</span>' +
@@ -449,6 +494,13 @@
   function hideModal() {
     var modal = document.getElementById('modal')
     if (modal) modal.style.display = 'none'
+  }
+
+  // 查看大图（点击缩略图放大）
+  function viewImage(src) {
+    if (!src) return
+    showModal('<div class="view-image-wrap"><img class="view-image" src="' + src + '" alt="查看图片"/></div>' +
+      '<div class="modal-actions"><button class="btn-primary modal-btn" data-action="close-modal">关闭</button></div>')
   }
 
   // ========== 页面渲染 ==========
@@ -827,8 +879,9 @@
         '<input id="msg-name" class="form-input" placeholder="请输入你的真实姓名" maxlength="20"/>') +
       '<div class="form-label">留言内容 <span class="form-required">*</span></div>' +
       '<textarea id="msg-content" class="form-textarea" placeholder="请描述你的问题或建议"></textarea>' +
-      '<div class="form-label">图片（可选，最多1张）</div>' +
-      '<input id="msg-image" class="form-input" placeholder="https://example.com/image.jpg"/>' +
+      '<div class="form-label">图片（可选，最多3张）</div>' +
+      renderImagePicker(formState.msgImages, 'msg-img', 3) +
+      '<input type="file" id="msg-img-file" accept="image/*" style="display:none"/>' +
       (state.config.messageReviewEnabled ? '<div class="form-ai-hint">🔔 留言将先经教师审核后展示</div>' : '') +
       '<button class="btn-primary" data-action="submit-message">提 交 留 言</button>' +
       '</div></div>'
@@ -918,6 +971,9 @@
       '<h2 class="detail-title">' + Util.escapeHtml(d.title) + '</h2>' +
       '<div class="detail-author">👤 ' + Util.escapeHtml(d.author) + '</div>' +
       '<div class="detail-content">' + Util.nl2br(d.content) + '</div>' +
+      '<div class="detail-images">' + (d.images || []).map(function (img) {
+        return '<img class="detail-img" src="' + img + '" alt="讨论图片" data-action="view-image" data-src="' + img + '"/>'
+      }).join('') + '</div>' +
       '<div class="detail-actions">' +
       '<div class="detail-like' + likeClass + '" data-action="like-discussion" data-id="' + d.id + '">👍 ' + likeText + ' (' + d.likes + ')</div>' +
       '</div>' +
@@ -959,6 +1015,9 @@
         '<input id="disc-name" class="form-input" placeholder="请输入你的真实姓名" maxlength="20"/>') +
       '<div class="form-label">内容 <span class="form-required">*</span></div>' +
       '<textarea id="disc-content" class="form-textarea" placeholder="请输入讨论内容"></textarea>' +
+      '<div class="form-label">图片（可选，最多3张）</div>' +
+      renderImagePicker(formState.discImages, 'disc-img', 3) +
+      '<input type="file" id="disc-img-file" accept="image/*" style="display:none"/>' +
       '<div class="form-ai-hint">🤖 AI 将自动过滤违规内容</div>' +
       '<button class="btn-primary" data-action="submit-discussion">发 布 帖 子</button>' +
       '</div></div>'
@@ -1129,7 +1188,9 @@
     msgType: 'knowledge',
     discCat: 'question',
     msgMode: 'real',
-    discMode: 'real'
+    discMode: 'real',
+    msgImages: [],
+    discImages: []
   }
   var aiMessageSummary = null
   var aiSummaryResult = null
@@ -1336,6 +1397,45 @@
     renderApp()
   }
 
+  // 触发隐藏文件选择框
+  function pickMsgImage() {
+    var input = document.getElementById('msg-img-file')
+    if (input) input.click()
+  }
+  function pickDiscImage() {
+    var input = document.getElementById('disc-img-file')
+    if (input) input.click()
+  }
+
+  // 文件选择后压缩并加入列表
+  function onMsgImageChosen(file) {
+    if (!file || !/^image\//.test(file.type)) { Util.showToast('请选择图片文件'); return }
+    if ((formState.msgImages || []).length >= 3) { Util.showToast('最多上传3张图片'); return }
+    compressImageFile(file, 900, 0.75).then(function (dataUrl) {
+      formState.msgImages = formState.msgImages || []
+      formState.msgImages.push(dataUrl)
+      renderApp()
+    }).catch(function () { Util.showToast('图片处理失败，请换一张') })
+  }
+  function onDiscImageChosen(file) {
+    if (!file || !/^image\//.test(file.type)) { Util.showToast('请选择图片文件'); return }
+    if ((formState.discImages || []).length >= 3) { Util.showToast('最多上传3张图片'); return }
+    compressImageFile(file, 900, 0.75).then(function (dataUrl) {
+      formState.discImages = formState.discImages || []
+      formState.discImages.push(dataUrl)
+      renderApp()
+    }).catch(function () { Util.showToast('图片处理失败，请换一张') })
+  }
+
+  function removeMsgImage(index) {
+    formState.msgImages.splice(index, 1)
+    renderApp()
+  }
+  function removeDiscImage(index) {
+    formState.discImages.splice(index, 1)
+    renderApp()
+  }
+
   function pickDiscCat(key) {
     formState.discCat = key
     var tags = document.querySelectorAll('.form-tag[data-action="pick-disc-cat"]')
@@ -1413,8 +1513,7 @@
       if (!realName) { Util.showToast('请输入你的真实姓名'); return }
     }
     var isAnon = formState.msgMode !== 'real'
-    var imgInput = document.getElementById('msg-image')
-    var img = imgInput ? imgInput.value.trim() : ''
+    var images = formState.msgImages || []
 
     var msg = {
       id: Util.genId(),
@@ -1425,7 +1524,7 @@
       createTime: Date.now(),
       replied: false
     }
-    if (img) msg.images = [img]
+    if (images.length) msg.images = images
     if (state.config.messageReviewEnabled) {
       msg.status = 'pending'
     } else {
@@ -1466,6 +1565,7 @@
         id: Util.genId(),
         author: formState.discMode === 'real' ? realName : '匿名同学',
         avatar: '',
+        images: formState.discImages || [],
         category: formState.discCat,
         title: title,
         content: content,
@@ -1954,6 +2054,11 @@
       case 'pick-msg-mode': pickMsgMode(key); break
       case 'pick-disc-cat': pickDiscCat(key); break
       case 'pick-disc-mode': pickDiscMode(key); break
+      case 'msg-img-pick': pickMsgImage(); break
+      case 'disc-img-pick': pickDiscImage(); break
+      case 'msg-img-remove': removeMsgImage(parseInt(id || '0', 10) || 0); break
+      case 'disc-img-remove': removeDiscImage(parseInt(id || '0', 10) || 0); break
+      case 'view-image': viewImage(el.getAttribute('data-src')); break
       case 'toggle-publish-top-new':
         formState.publishIsTop = !formState.publishIsTop
         renderApp(); break
@@ -2015,6 +2120,15 @@
         }
         el = el.parentNode
       }
+    })
+
+    // 图片文件选择
+    document.addEventListener('change', function (e) {
+      var t = e.target
+      if (!t || !t.files || !t.files.length) return
+      if (t.id === 'msg-img-file') onMsgImageChosen(t.files[0])
+      else if (t.id === 'disc-img-file') onDiscImageChosen(t.files[0])
+      t.value = ''
     })
 
     document.addEventListener('keydown', function (e) {

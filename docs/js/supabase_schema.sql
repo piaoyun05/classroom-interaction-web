@@ -44,7 +44,8 @@ create table if not exists messages (
   replied boolean,
   reply text,
   reply_time bigint,
-  status text
+  status text,
+  images jsonb
 );
 
 -- 讨论帖表
@@ -63,7 +64,8 @@ create table if not exists discussions (
   ai_answer text,
   ai_answer_time bigint,
   ai_pinned boolean,
-  reviewed boolean
+  reviewed boolean,
+  images jsonb
 );
 
 -- 课程配置表

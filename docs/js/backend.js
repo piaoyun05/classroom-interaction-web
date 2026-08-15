@@ -22,12 +22,12 @@
     messages: {
       pk: 'id',
       courseField: 'courseId',
-      map: { id: 'id', courseId: 'course_id', studentName: 'student_name', isAnonymous: 'is_anonymous', type: 'type', content: 'content', createTime: 'create_time', replied: 'replied', reply: 'reply', replyTime: 'reply_time', status: 'status' }
+      map: { id: 'id', courseId: 'course_id', studentName: 'student_name', isAnonymous: 'is_anonymous', type: 'type', content: 'content', createTime: 'create_time', replied: 'replied', reply: 'reply', replyTime: 'reply_time', status: 'status', images: 'images' }
     },
     discussions: {
       pk: 'id',
       courseField: 'courseId',
-      map: { id: 'id', courseId: 'course_id', author: 'author', avatar: 'avatar', category: 'category', title: 'title', content: 'content', createTime: 'create_time', likes: 'likes', liked: 'liked', comments: 'comments', aiAnswer: 'ai_answer', aiAnswerTime: 'ai_answer_time', aiPinned: 'ai_pinned', reviewed: 'reviewed' }
+      map: { id: 'id', courseId: 'course_id', author: 'author', avatar: 'avatar', category: 'category', title: 'title', content: 'content', createTime: 'create_time', likes: 'likes', liked: 'liked', comments: 'comments', aiAnswer: 'ai_answer', aiAnswerTime: 'ai_answer_time', aiPinned: 'ai_pinned', reviewed: 'reviewed', images: 'images' }
     },
     course_config: {
       pk: 'courseId',
@@ -71,7 +71,7 @@
       var v = row[jsKey]
       if (v === undefined) return
       // jsonb 字段序列化
-      if (dbKey === 'attachments' || dbKey === 'comments') {
+      if (dbKey === 'attachments' || dbKey === 'comments' || dbKey === 'images') {
         out[dbKey] = (v === null || v === undefined) ? '[]' : JSON.stringify(v)
       } else {
         out[dbKey] = v
@@ -88,7 +88,7 @@
       var dbKey = m[jsKey]
       var v = row[dbKey]
       if (v === undefined || v === null) return
-      if (dbKey === 'attachments' || dbKey === 'comments') {
+      if (dbKey === 'attachments' || dbKey === 'comments' || dbKey === 'images') {
         try { out[jsKey] = typeof v === 'string' ? JSON.parse(v) : v } catch (e) { out[jsKey] = [] }
       } else {
         out[jsKey] = v

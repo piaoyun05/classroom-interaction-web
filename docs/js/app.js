@@ -401,6 +401,21 @@
     return html
   }
 
+  // 文件/视频附件列表：显示已选文件名+大小 + 上传按钮
+  function renderFilePicker(list, actionPrefix, pickerAction) {
+    var html = ''
+    if (list && list.length) {
+      html = '<div class="file-picker-list">' + list.map(function (f, i) {
+        return '<div class="file-picker-item"><span class="file-picker-icon">📄</span>' +
+          '<span class="file-picker-name">' + Util.escapeHtml(f.name) + '</span>' +
+          '<span class="file-picker-size">' + Util.escapeHtml(f.size || '') + '</span>' +
+          '<span class="file-picker-del" data-action="' + actionPrefix + '-remove" data-id="' + i + '">✕</span></div>'
+      }).join('') + '</div>'
+    }
+    html += '<button type="button" class="btn-ghost img-picker-btn" data-action="' + (pickerAction || (actionPrefix + '-pick')) + '">📎 选择文件</button>'
+    return html
+  }
+
   function renderTag(catMap, key) {
     var item = catMap[key]
     // 兜底：未匹配 key、key 为空/对象格式缺失时，显示安全文本
@@ -416,10 +431,14 @@
     var top = p.isTop ? '<span class="badge-top">置顶</span>' : ''
     var deadline = p.deadline ? '<div class="pub-deadline">⏰ 截止：' + Util.formatDate(p.deadline) + '</div>' : ''
     var typeIcon = (Util.CONTENT_TYPE_MAP[p.type] || Util.CONTENT_TYPE_MAP.text).icon + ' '
+    var imgs = (p.images || []).map(function (img) {
+      return '<img class="msg-img" src="' + img + '" alt="发布图片" data-action="view-image" data-src="' + img + '"/>'
+    }).join('')
     return '<div class="card pub-card" data-action="open-publish-detail" data-id="' + p.id + '">' +
       '<div class="card-top">' + tag + top + '<span class="card-time">' + Util.timeAgo(p.createTime) + '</span></div>' +
       '<h3 class="card-title">' + typeIcon + Util.escapeHtml(p.title) + '</h3>' +
       '<p class="card-summary">' + Util.escapeHtml(p.summary || p.content) + '</p>' +
+      imgs +
       '<div class="card-meta">' + deadline +
       '<span>👨‍🏫 ' + Util.escapeHtml(p.author) + '</span>' +
       '<span>👁 ' + p.views + '</span>' +
@@ -719,7 +738,7 @@
       return '<div class="attach-item">📎 ' + Util.escapeHtml(a.name) + ' <span class="attach-size">' + a.size + '</span></div>'
     }).join('')
     var images = (p.images || []).map(function (img) {
-      return '<img class="detail-img" src="' + Util.escapeHtml(img) + '" alt="内容图片"/>'
+      return '<img class="detail-img" src="' + img + '" alt="内容图片" data-action="view-image" data-src="' + img + '"/>'
     }).join('')
     var link = p.link ? '<div class="attach-item">🔗 <a href="' + Util.escapeHtml(p.link) + '" target="_blank" rel="noopener">' + Util.escapeHtml(p.linkTitle || p.link) + '</a></div>' : ''
     var video = p.video ? '<div class="video-box"><div class="video-placeholder">🎬 ' + Util.escapeHtml(p.videoTitle || '课程视频') + '</div><div class="video-link">' + Util.escapeHtml(p.video) + '</div></div>' : ''
@@ -756,20 +775,29 @@
 
     var typeExtras = ''
     if (formState.publishType === 'image') {
-      typeExtras = '<div class="form-label">图片地址</div>' +
+      typeExtras = '<div class="form-label">图片（可上传或填链接）</div>' +
+        renderImagePicker(formState.pubImages, 'pub-img', 3) +
+        '<input type="file" id="pub-img-file" accept="image/*" multiple style="display:none"/>' +
+        '<div class="form-label" style="margin-top:8px">或粘贴图片链接</div>' +
         '<input id="pub-image" class="form-input" placeholder="https://example.com/image.jpg"/>'
     } else if (formState.publishType === 'file') {
-      typeExtras = '<div class="form-label">文件名</div>' +
-        '<input id="pub-file-name" class="form-input" placeholder="如：第三章课件.pdf"/>' +
-        '<div class="form-label">文件大小</div>' +
-        '<input id="pub-file-size" class="form-input" placeholder="如：2.3MB"/>'
+      typeExtras = '<div class="form-label">文件附件</div>' +
+        renderFilePicker(formState.pubFiles, 'pub-file') +
+        '<input type="file" id="pub-file-input" style="display:none"/>' +
+        '<div class="form-ai-hint">📎 可选择课件/PDF/Word 等附件；超过云端限制的文件请上传到网盘后粘贴链接</div>' +
+        '<div class="form-label" style="margin-top:8px">或填写附件信息</div>' +
+        '<div class="form-row" style="gap:8px"><input id="pub-file-name" class="form-input" placeholder="如：第三章课件.pdf" style="flex:2"/><input id="pub-file-size" class="form-input" placeholder="大小（2.3MB）" style="flex:1"/></div>'
     } else if (formState.publishType === 'link') {
       typeExtras = '<div class="form-label">链接地址 <span class="form-required">*</span></div>' +
         '<input id="pub-link" class="form-input" placeholder="https://..."/>' +
         '<div class="form-label">链接标题</div>' +
         '<input id="pub-link-title" class="form-input" placeholder="链接显示名称"/>'
     } else if (formState.publishType === 'video') {
-      typeExtras = '<div class="form-label">视频链接</div>' +
+      typeExtras = '<div class="form-label">视频文件（仅记录信息）</div>' +
+        renderFilePicker(formState.pubFiles, 'pub-file', 'pub-video-pick') +
+        '<input type="file" id="pub-video-input" accept="video/*" style="display:none"/>' +
+        '<div class="form-ai-hint">🎬 视频文件较大，建议上传到 B 站/YouTube 后粘贴链接（下方必填）</div>' +
+        '<div class="form-label" style="margin-top:8px">视频链接 <span class="form-required">*</span></div>' +
         '<input id="pub-video" class="form-input" placeholder="https://..."/>' +
         '<div class="form-label">视频标题</div>' +
         '<input id="pub-video-title" class="form-input" placeholder="如：课堂讲解录像"/>'
@@ -1190,7 +1218,9 @@
     msgMode: 'real',
     discMode: 'real',
     msgImages: [],
-    discImages: []
+    discImages: [],
+    pubImages: [],
+    pubFiles: []
   }
   var aiMessageSummary = null
   var aiSummaryResult = null
@@ -1406,6 +1436,18 @@
     var input = document.getElementById('disc-img-file')
     if (input) input.click()
   }
+  function pickPubImage() {
+    var input = document.getElementById('pub-img-file')
+    if (input) input.click()
+  }
+  function pickPubFile() {
+    var input = document.getElementById('pub-file-input')
+    if (input) input.click()
+  }
+  function pickPubVideo() {
+    var input = document.getElementById('pub-video-input')
+    if (input) input.click()
+  }
 
   // 文件选择后压缩并加入列表
   function onMsgImageChosen(file) {
@@ -1426,6 +1468,35 @@
       renderApp()
     }).catch(function () { Util.showToast('图片处理失败，请换一张') })
   }
+  function onPubImageChosen(file) {
+    if (!file || !/^image\//.test(file.type)) { Util.showToast('请选择图片文件'); return }
+    if (formState.pubImages.length >= 3) { Util.showToast('最多上传3张图片'); return }
+    compressImageFile(file, 900, 0.75).then(function (dataUrl) {
+      formState.pubImages.push(dataUrl)
+      renderApp()
+    }).catch(function () { Util.showToast('图片处理失败，请换一张') })
+  }
+
+  // 文件/视频附件：只读元数据（不读取文件内容）
+  function onPubFileChosen(file) {
+    if (!file) { Util.showToast('请选择文件'); return }
+    if (formState.pubFiles.length >= 5) { Util.showToast('最多5个附件'); return }
+    formState.pubFiles.push({ name: file.name, size: formatFileSize(file.size) })
+    renderApp()
+  }
+  function onPubVideoChosen(file) {
+    if (!file) { Util.showToast('请选择视频文件'); return }
+    if (formState.pubFiles.length >= 3) { Util.showToast('最多3个视频附件'); return }
+    formState.pubFiles.push({ name: file.name, size: formatFileSize(file.size) })
+    renderApp()
+  }
+  function formatFileSize(bytes) {
+    if (!bytes) return ''
+    if (bytes < 1024) return bytes + ' B'
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB'
+    if (bytes < 1024 * 1024 * 1024) return (bytes / 1024 / 1024).toFixed(1) + ' MB'
+    return (bytes / 1024 / 1024 / 1024).toFixed(2) + ' GB'
+  }
 
   function removeMsgImage(index) {
     formState.msgImages.splice(index, 1)
@@ -1433,6 +1504,14 @@
   }
   function removeDiscImage(index) {
     formState.discImages.splice(index, 1)
+    renderApp()
+  }
+  function removePubImage(index) {
+    formState.pubImages.splice(index, 1)
+    renderApp()
+  }
+  function removePubFile(index) {
+    formState.pubFiles.splice(index, 1)
     renderApp()
   }
 
@@ -1468,12 +1547,17 @@
       pub.deadline = new Date(deadlineVal.value).getTime()
     }
     if (type === 'image') {
+      // 上传的图片（base64）+ 可选链接
+      if (formState.pubImages.length) pub.images = formState.pubImages.slice()
       var img = document.getElementById('pub-image').value.trim()
-      if (img) pub.images = [img]
+      if (img && pub.images) pub.images.push(img)
+      else if (img) pub.images = [img]
     } else if (type === 'file') {
+      // 上传的附件元数据 + 手动填写兜底
+      var atts = formState.pubFiles.slice()
       var fname = document.getElementById('pub-file-name').value.trim()
-      var fsize = document.getElementById('pub-file-size').value.trim()
-      if (fname) pub.attachments = [{ name: fname, size: fsize || '未知' }]
+      if (fname) atts.push({ name: fname, size: document.getElementById('pub-file-size').value.trim() || '未知' })
+      if (atts.length) pub.attachments = atts
     } else if (type === 'link') {
       var link = document.getElementById('pub-link').value.trim()
       if (link) {
@@ -1482,10 +1566,10 @@
       }
     } else if (type === 'video') {
       var vlink = document.getElementById('pub-video').value.trim()
-      if (vlink) {
-        pub.video = vlink
-        pub.videoTitle = document.getElementById('pub-video-title').value.trim() || '课程视频'
-      }
+      if (!vlink) { Util.showToast('请输入视频链接'); return }
+      pub.video = vlink
+      pub.videoTitle = document.getElementById('pub-video-title').value.trim() || '课程视频'
+      if (formState.pubFiles.length) pub.attachments = formState.pubFiles.slice()
     }
 
     Util.showToast('AI 正在整理内容…')
@@ -2058,6 +2142,11 @@
       case 'disc-img-pick': pickDiscImage(); break
       case 'msg-img-remove': removeMsgImage(parseInt(id || '0', 10) || 0); break
       case 'disc-img-remove': removeDiscImage(parseInt(id || '0', 10) || 0); break
+      case 'pub-img-pick': pickPubImage(); break
+      case 'pub-img-remove': removePubImage(parseInt(id || '0', 10) || 0); break
+      case 'pub-file-pick': pickPubFile(); break
+      case 'pub-file-remove': removePubFile(parseInt(id || '0', 10) || 0); break
+      case 'pub-video-pick': pickPubVideo(); break
       case 'view-image': viewImage(el.getAttribute('data-src')); break
       case 'toggle-publish-top-new':
         formState.publishIsTop = !formState.publishIsTop
@@ -2122,12 +2211,15 @@
       }
     })
 
-    // 图片文件选择
+    // 图片/文件选择
     document.addEventListener('change', function (e) {
       var t = e.target
       if (!t || !t.files || !t.files.length) return
       if (t.id === 'msg-img-file') onMsgImageChosen(t.files[0])
       else if (t.id === 'disc-img-file') onDiscImageChosen(t.files[0])
+      else if (t.id === 'pub-img-file') { for (var i = 0; i < t.files.length; i++) onPubImageChosen(t.files[i]) }
+      else if (t.id === 'pub-file-input') onPubFileChosen(t.files[0])
+      else if (t.id === 'pub-video-input') onPubVideoChosen(t.files[0])
       t.value = ''
     })
 

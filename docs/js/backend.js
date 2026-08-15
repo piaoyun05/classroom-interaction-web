@@ -17,7 +17,7 @@
     publishes: {
       pk: 'id',
       courseField: 'courseId',
-      map: { id: 'id', courseId: 'course_id', title: 'title', category: 'category', content: 'content', summary: 'summary', author: 'author', createTime: 'create_time', isTop: 'is_top', views: 'views', deadline: 'deadline', attachments: 'attachments' }
+      map: { id: 'id', courseId: 'course_id', title: 'title', category: 'category', content: 'content', summary: 'summary', author: 'author', createTime: 'create_time', isTop: 'is_top', views: 'views', deadline: 'deadline', attachments: 'attachments', images: 'images' }
     },
     messages: {
       pk: 'id',

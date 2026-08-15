@@ -1446,6 +1446,49 @@ html, body {
   cursor: pointer;
 }
 
+/* 文件/视频附件选择列表 */
+.file-picker-list {
+  margin-bottom: 8px;
+}
+.file-picker-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 10px;
+  margin-bottom: 6px;
+  font-size: 13px;
+}
+.file-picker-icon {
+  flex-shrink: 0;
+}
+.file-picker-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.file-picker-size {
+  color: var(--text-secondary);
+  font-size: 12px;
+  flex-shrink: 0;
+}
+.file-picker-del {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  line-height: 16px;
+  text-align: center;
+  background: #e11d48;
+  color: #fff;
+  border-radius: 50%;
+  font-size: 11px;
+  cursor: pointer;
+}
+
 /* 详情页图片网格 */
 .detail-images {
   display: flex;

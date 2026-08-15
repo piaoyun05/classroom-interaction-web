@@ -29,7 +29,8 @@ create table if not exists publishes (
   is_top boolean,
   views int,
   deadline bigint,
-  attachments jsonb
+  attachments jsonb,
+  images jsonb
 );
 
 -- 留言表

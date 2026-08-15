@@ -60,10 +60,10 @@
   }
 
   const MESSAGE_TYPE_MAP = {
-    knowledge: '知识点疑问',
-    suggest: '教学建议',
-    homework: '作业问题',
-    other: '其他'
+    knowledge: { label: '知识点疑问', color: 'tag-knowledge' },
+    homework: { label: '作业问题', color: 'tag-homework' },
+    suggest: { label: '教学建议', color: 'tag-notice' },
+    other: { label: '其他', color: 'tag-keypoint' }
   }
 
   // 发布内容格式类型

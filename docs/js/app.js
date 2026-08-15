@@ -354,8 +354,13 @@
 
   // ========== 工具渲染函数 ==========
   function renderTag(catMap, key) {
-    var item = catMap[key] || { label: key, color: '' }
-    return '<span class="tag ' + item.color + '">' + item.label + '</span>'
+    var item = catMap[key]
+    // 兜底：未匹配 key、key 为空/对象格式缺失时，显示安全文本
+    if (!item || typeof item.label !== 'string') {
+      var fb = (typeof key === 'string' && key) ? key : '未分类'
+      return '<span class="tag">' + fb + '</span>'
+    }
+    return '<span class="tag ' + (item.color || '') + '">' + item.label + '</span>'
   }
 
   function renderPublishCard(p) {

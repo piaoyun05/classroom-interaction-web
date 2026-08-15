@@ -642,7 +642,7 @@
       { key: 'keypoint', label: '重点' }
     ]
     var current = tabState.publishFilter || 'all'
-    var list = state.publishes
+    var list = sortByTimeDesc(state.publishes)
     if (current !== 'all') list = list.filter(function (p) { return p.category === current })
 
     var tabHtml = tabs.map(function (t) {

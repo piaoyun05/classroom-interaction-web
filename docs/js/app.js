@@ -795,6 +795,7 @@
   }
 
   function renderMessageNew() {
+    var anon = formState.msgMode === 'anon'
     return '<div class="page form-page">' +
       '<div class="form-card card">' +
       '<div class="form-label">留言类型 <span class="form-required">*</span></div>' +
@@ -804,13 +805,18 @@
       '<div class="form-tag" data-action="pick-msg-type" data-key="suggest">教学建议</div>' +
       '<div class="form-tag" data-action="pick-msg-type" data-key="other">其他</div>' +
       '</div>' +
+      '<div class="form-label">身份 <span class="form-required">*</span></div>' +
+      '<div class="form-tags">' +
+      '<div class="form-tag' + (anon ? '' : ' active') + '" data-action="pick-msg-mode" data-key="real">实名</div>' +
+      '<div class="form-tag' + (anon ? ' active' : '') + '" data-action="pick-msg-mode" data-key="anon">匿名</div>' +
+      '</div>' +
+      (anon ? '' :
+        '<div class="form-label">你的姓名 <span class="form-required">*</span></div>' +
+        '<input id="msg-name" class="form-input" placeholder="请输入你的真实姓名" maxlength="20"/>') +
       '<div class="form-label">留言内容 <span class="form-required">*</span></div>' +
       '<textarea id="msg-content" class="form-textarea" placeholder="请描述你的问题或建议"></textarea>' +
       '<div class="form-label">图片（可选，最多1张）</div>' +
       '<input id="msg-image" class="form-input" placeholder="https://example.com/image.jpg"/>' +
-      '<div class="form-anon">' +
-      '<label class="anon-label"><input type="checkbox" id="msg-anon"/> 匿名留言（仅教师可见你的信息）</label>' +
-      '</div>' +
       (state.config.messageReviewEnabled ? '<div class="form-ai-hint">🔔 留言将先经教师审核后展示</div>' : '') +
       '<button class="btn-primary" data-action="submit-message">提 交 留 言</button>' +
       '</div></div>'
@@ -919,6 +925,7 @@
   }
 
   function renderDiscussionNew() {
+    var anon = formState.discMode === 'anon'
     return '<div class="page form-page">' +
       '<div class="form-card card">' +
       '<div class="form-label">标题 <span class="form-required">*</span></div>' +
@@ -930,6 +937,14 @@
       '<div class="form-tag" data-action="pick-disc-cat" data-key="knowledge">知识点讨论</div>' +
       '<div class="form-tag" data-action="pick-disc-cat" data-key="experience">学习经验</div>' +
       '</div>' +
+      '<div class="form-label">身份 <span class="form-required">*</span></div>' +
+      '<div class="form-tags">' +
+      '<div class="form-tag' + (anon ? '' : ' active') + '" data-action="pick-disc-mode" data-key="real">实名</div>' +
+      '<div class="form-tag' + (anon ? ' active' : '') + '" data-action="pick-disc-mode" data-key="anon">匿名</div>' +
+      '</div>' +
+      (anon ? '' :
+        '<div class="form-label">你的姓名 <span class="form-required">*</span></div>' +
+        '<input id="disc-name" class="form-input" placeholder="请输入你的真实姓名" maxlength="20"/>') +
       '<div class="form-label">内容 <span class="form-required">*</span></div>' +
       '<textarea id="disc-content" class="form-textarea" placeholder="请输入讨论内容"></textarea>' +
       '<div class="form-ai-hint">🤖 AI 将自动过滤违规内容</div>' +
@@ -1100,7 +1115,9 @@
     publishType: 'text',
     publishIsTop: false,
     msgType: 'knowledge',
-    discCat: 'question'
+    discCat: 'question',
+    msgMode: 'real',
+    discMode: 'real'
   }
   var aiMessageSummary = null
   var aiSummaryResult = null
@@ -1297,6 +1314,16 @@
     })
   }
 
+  function pickMsgMode(key) {
+    formState.msgMode = key
+    renderApp()
+  }
+
+  function pickDiscMode(key) {
+    formState.discMode = key
+    renderApp()
+  }
+
   function pickDiscCat(key) {
     formState.discCat = key
     var tags = document.querySelectorAll('.form-tag[data-action="pick-disc-cat"]')
@@ -1366,13 +1393,20 @@
   function submitMessage() {
     var content = document.getElementById('msg-content').value.trim()
     if (!content) { Util.showToast('请输入留言内容'); return }
-    var isAnon = document.getElementById('msg-anon').checked
+    // 实名/匿名：实名需输入姓名，匿名使用占位名
+    var realName = ''
+    if (formState.msgMode === 'real') {
+      var nameInput = document.getElementById('msg-name')
+      realName = nameInput ? nameInput.value.trim() : ''
+      if (!realName) { Util.showToast('请输入你的真实姓名'); return }
+    }
+    var isAnon = formState.msgMode !== 'real'
     var imgInput = document.getElementById('msg-image')
     var img = imgInput ? imgInput.value.trim() : ''
 
     var msg = {
       id: Util.genId(),
-      studentName: isAnon ? '匿名同学' : state.user.name,
+      studentName: isAnon ? '匿名同学' : realName,
       isAnonymous: isAnon,
       type: formState.msgType,
       content: content,
@@ -1409,9 +1443,16 @@
         Util.showToast(res.reason || '内容包含违规词，请修改', '')
         return
       }
+      // 实名/匿名：实名需输入姓名，匿名使用占位名
+      var realName = ''
+      if (formState.discMode === 'real') {
+        var nameInput = document.getElementById('disc-name')
+        realName = nameInput ? nameInput.value.trim() : ''
+        if (!realName) { Util.showToast('请输入你的真实姓名'); return }
+      }
       var d = {
         id: Util.genId(),
-        author: state.user.name,
+        author: formState.discMode === 'real' ? realName : '匿名同学',
         avatar: '',
         category: formState.discCat,
         title: title,
@@ -1898,7 +1939,9 @@
       case 'pick-publish-cat': pickPublishCat(key); break
       case 'pick-publish-type': pickPublishType(key); break
       case 'pick-msg-type': pickMsgType(key); break
+      case 'pick-msg-mode': pickMsgMode(key); break
       case 'pick-disc-cat': pickDiscCat(key); break
+      case 'pick-disc-mode': pickDiscMode(key); break
       case 'toggle-publish-top-new':
         formState.publishIsTop = !formState.publishIsTop
         renderApp(); break

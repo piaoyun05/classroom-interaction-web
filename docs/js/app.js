@@ -494,7 +494,7 @@
       return '<img class="msg-img msg-img-sm" src="' + img + '" alt="讨论图片" data-action="view-image" data-src="' + img + '"/>'
     }).join('')
     var adminBtns = isTeacher()
-      ? '<span class="pub-admin pub-del" data-action="delete-discussion" data-id="' + d.id + '">删除</span>'
+      ? '<span class="pub-admin pub-del" data-action="delete-discussion" data-id="' + d.id + '">🗑️ 删除</span>'
       : ''
     return '<div class="card disc-card" data-action="open-discussion-detail" data-id="' + d.id + '">' +
       '<div class="card-top">' + tag + top + aiBadge + hot + '<span class="card-time">' + Util.timeAgo(d.createTime) + '</span></div>' +

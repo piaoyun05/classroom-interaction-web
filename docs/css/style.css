@@ -185,6 +185,9 @@ html, body {
 }
 .pub-admin.pub-del {
   color: #e11d48;
+  background: #fff1f2;
+  border-radius: 12px;
+  padding: 2px 8px;
 }
 .detail-del {
   display: inline-flex;

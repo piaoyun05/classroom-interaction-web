@@ -353,6 +353,13 @@
   }
 
   // ========== 工具渲染函数 ==========
+  // 按时间就近排布：发表时间最近的排在顶部（降序）
+  function sortByTimeDesc(arr) {
+    return (arr || []).slice().sort(function (a, b) {
+      return (b.createTime || 0) - (a.createTime || 0)
+    })
+  }
+
   function renderTag(catMap, key) {
     var item = catMap[key]
     // 兜底：未匹配 key、key 为空/对象格式缺失时，显示安全文本
@@ -610,13 +617,13 @@
 
   function latestItems() {
     var items = []
-    state.publishes.slice(0, 2).forEach(function (p) {
+    sortByTimeDesc(state.publishes).slice(0, 2).forEach(function (p) {
       items.push('<div class="latest-item" data-action="open-publish-detail" data-id="' + p.id + '">' +
         '<span class="latest-icon">📢</span>' +
         '<div class="latest-body"><div class="latest-title">' + Util.escapeHtml(p.title) + '</div>' +
         '<div class="latest-time">' + Util.timeAgo(p.createTime) + '</div></div></div>')
     })
-    state.discussions.slice(0, 2).forEach(function (d) {
+    sortByTimeDesc(state.discussions).slice(0, 2).forEach(function (d) {
       items.push('<div class="latest-item" data-action="open-discussion-detail" data-id="' + d.id + '">' +
         '<span class="latest-icon">💬</span>' +
         '<div class="latest-body"><div class="latest-title">' + Util.escapeHtml(d.title) + '</div>' +
@@ -762,12 +769,12 @@
         '</div>'
     }
 
-    var list = state.messages.filter(function (m) {
+    var list = sortByTimeDesc(state.messages.filter(function (m) {
       // 未开启审核：全部显示；开启审核：学生只看已通过，教师看全部
       if (!state.config.messageReviewEnabled) return m.status !== 'rejected'
       if (isTeacher()) return true
       return m.status !== 'pending' && m.status !== 'rejected'
-    })
+    }))
 
     var listHtml = list.length
       ? list.map(renderMessageCard).join('')
@@ -836,7 +843,7 @@
       { key: 'experience', label: '学习经验' }
     ]
     var current = tabState.discussionFilter || 'all'
-    var list = state.discussions
+    var list = sortByTimeDesc(state.discussions)
     if (current !== 'all') list = list.filter(function (d) { return d.category === current })
 
     var tabHtml = tabs.map(function (t) {
@@ -963,8 +970,8 @@
       return '<div class="quick-item" data-action="quick-ask" data-q="' + Util.escapeHtml(q) + '">' + Util.escapeHtml(q) + '</div>'
     }).join('')
 
-    // 每次问答以条目形式显示，标题即问题本身
-    var chatHtml = state.aiHistory.map(function (h) {
+    // 每次问答以条目形式显示，标题即问题本身；最新问答排在顶部
+    var chatHtml = sortByTimeDesc(state.aiHistory).map(function (h) {
       return '<div class="qa-card card">' +
         '<div class="qa-title">❓ ' + Util.escapeHtml(h.question) + '</div>' +
         '<div class="qa-answer">' + Util.nl2br(h.answer) + '</div>' +
@@ -1623,7 +1630,7 @@
     var q = input.value.trim()
     if (!q) { Util.showToast('请输入问题'); return }
     input.value = ''
-    state.aiHistory.push({ question: q, answer: '…' })
+    state.aiHistory.push({ question: q, answer: '…', createTime: Date.now() })
     renderApp()
 
     var result = await AIEngine.aiGlobalQA(q, state)
@@ -1638,7 +1645,7 @@
   function quickAsk(e) {
     var q = e.currentTarget.getAttribute('data-q')
     if (!q) return
-    state.aiHistory.push({ question: q, answer: '…' })
+    state.aiHistory.push({ question: q, answer: '…', createTime: Date.now() })
     renderApp()
     AIEngine.aiGlobalQA(q, state).then(function (result) {
       var last = state.aiHistory[state.aiHistory.length - 1]
